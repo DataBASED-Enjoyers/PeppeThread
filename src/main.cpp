@@ -36,16 +36,13 @@ int main(int argc, char* argv[]) {
     double start_time, end_time;
     GET_TIME(start_time);
 
-    // if (argc != 3) {
-    //     std::cerr << "Использование: ./program nthreads ntrials" << std::endl;
-    //     return 1;
-    // }
+    if (argc != 3) {
+        std::cerr << "Использование: ./program nthreads ntrials" << std::endl;
+        return 1;
+    }
 
-    // int nthreads = std::stoi(argv[1]);
-    // long ntrials = std::stol(argv[2]);
-
-    int nthreads = 100;
-    long ntrials = 1000000;
+    int nthreads = std::stoi(argv[1]);
+    long ntrials = std::stol(argv[2]);
 
     long trials_per_thread = ntrials / nthreads;
 
@@ -62,8 +59,10 @@ int main(int argc, char* argv[]) {
         threads.emplace_back(compute_pi, trials, std::ref(total_hits));
     }
 
-    for (auto& t : threads) {
-        t.join();
+    for (auto& t : threads) {        
+        if (t.joinable()) {
+            t.join();
+        }
     }
 
     // Измерение времени окончания работы программы
