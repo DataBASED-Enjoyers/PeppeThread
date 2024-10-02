@@ -5,5 +5,5 @@ set(CMAKE_C_STANDARD 99)
 
 add_executable(
     pi 
-    src/pi.cpp
+    src/pi.c
 )

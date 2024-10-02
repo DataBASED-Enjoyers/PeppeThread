@@ -32,7 +32,6 @@ int main(int argc, char* argv[]) {
     int nthreads = atoi(argv[1]);
     long ntrials = atol(argv[2]);
 
-
     pthread_t threads[nthreads];
     ThreadData thread_data[nthreads];
     double start, end;
