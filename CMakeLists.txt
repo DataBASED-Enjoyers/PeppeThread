@@ -12,3 +12,5 @@ add_executable(
     mandelbrot
     src/mandelbrot.c
 )
+
+target_link_libraries(mandelbrot m pthread)
