@@ -4,7 +4,7 @@ import numpy as np
 
 
 def main() -> None:
-    df = pd.read_csv('../src/mandelbrot.csv', header=None, names=['x', 'y'])
+    df = pd.read_csv('../src/task2/mandelbrot.csv', header=None, names=['x', 'y'])
 
     plt.figure(figsize=(10, 8))
 

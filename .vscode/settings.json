@@ -3,6 +3,8 @@
         "*.cpp": "cpp",
         "stdio.h": "c",
         "stdlib.h": "c",
-        "pthread.h": "c"
+        "pthread.h": "c",
+        "chrono": "c",
+        "rw_lock.h": "c"
     }
 }

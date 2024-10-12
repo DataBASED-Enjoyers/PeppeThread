@@ -4,8 +4,8 @@
 
 ```bash
 sudo apt install clang-format
-clang-format -i src/*.c --verbose
-clang-format -i src/*.h --verbose
+find src -name "*.c" -exec clang-format -i --verbose {} +
+clang-format -i include/*.h --verbose
 ```
 
 ## Lab1
