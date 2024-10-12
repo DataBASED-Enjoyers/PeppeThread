@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(PeppeThread VERSION 0.1.0 LANGUAGES C)
-set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 
 find_program(CLANG_FORMAT NAMES clang-format)
@@ -23,12 +23,28 @@ endif()
 
 add_executable(
     pi 
-    src/pi.c
+    src/task1/pi.c
 )
 
 add_executable(
     mandelbrot
-    src/mandelbrot.c
+    src/task2/mandelbrot.c
+)
+target_link_libraries(mandelbrot m)
+
+add_executable(
+    rwlock_list
+    src/task3/pth_ll_rwl.c
 )
 
-target_link_libraries(mandelbrot m)
+add_executable(
+    ppt_rwlock_list
+    src/task3/rw_lock.c
+    src/task3/ppt_ll_rwl.c
+)
+
+target_include_directories(pi PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(mandelbrot PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
+target_include_directories(rwlock_list PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(ppt_rwlock_list PUBLIC ${CMAKE_SOURCE_DIR}/include)
