@@ -2,9 +2,6 @@
 #define _RW_LOCK_H_
 
 #include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 typedef struct {
     pthread_mutex_t lock;
@@ -24,8 +21,4 @@ void rwlock_rdlock(rwlock_t* rwlock);
 void rwlock_wrlock(rwlock_t* rwlock);
 
 void rwlock_unlock(rwlock_t* rwlock);
-
-void* reader(void* arg);
-void* writer(void* arg);
-
 #endif
