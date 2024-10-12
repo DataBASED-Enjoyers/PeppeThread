@@ -1,6 +1,7 @@
 # PeppeThread
 
 ## Task1
+[Task 1 report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/main/src/task1/report_task_1.md)
 
 ```bash
 gcc -Iinclude src/task1/pi.c -o src/task1/pi.o
@@ -8,6 +9,7 @@ gcc -Iinclude src/task1/pi.c -o src/task1/pi.o
 ```
 
 ## Task2
+[Task 2 report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/main/src/task2/report_task_2.md)
 
 ```bash
 gcc -Iinclude src/task2/mandelbrot.c -o src/task2/mandelbrot.o -lm
@@ -25,7 +27,7 @@ python3 -m main
 ```
 
 ## Task3
-
+[Task 3 report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/main/src/task3/report_task_3.md)
 * rw_lock original
 
 ```bash
