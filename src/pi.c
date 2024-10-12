@@ -17,8 +17,7 @@ void *compute_pi(void *arg) {
     for (long i = 0; i < data->trials; i++) {
         double x = (double)rand_r(&data->seed) / RAND_MAX * 2.0 - 1.0;
         double y = (double)rand_r(&data->seed) / RAND_MAX * 2.0 - 1.0;
-        if (x * x + y * y <= 1.0)
-            local_count++;
+        if (x * x + y * y <= 1.0) local_count++;
     }
     data->count = local_count;
     pthread_exit(NULL);
