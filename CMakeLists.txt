@@ -31,4 +31,9 @@ add_executable(
     src/mandelbrot.c
 )
 
+add_executable(
+    rwlock
+    src/rw_lock.c
+)
+
 target_link_libraries(mandelbrot m)
