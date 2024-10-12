@@ -1,13 +1,5 @@
 # PeppeThread
 
-## clang-format
-
-```bash
-sudo apt install clang-format
-find src -name "*.c" -exec clang-format -i --verbose {} +
-clang-format -i include/*.h --verbose
-```
-
 ## Task1
 
 ```bash
@@ -46,4 +38,12 @@ gcc -Iinclude src/task3/pth_ll_rwl.c -o src/task3/pth_ll_rwl.o
 ```bash
 gcc -Iinclude src/task3/ppt_ll_rwl.c src/task3/rw_lock.c -o src/task3/ppt_ll_rwl.o
 ./src/task3/ppt_ll_rwl.o <thread_count>
+```
+
+## clang-format
+
+```bash
+sudo apt install clang-format
+find src -name "*.c" -exec clang-format -i --verbose {} +
+clang-format -i include/*.h --verbose
 ```
