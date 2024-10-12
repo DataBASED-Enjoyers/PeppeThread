@@ -33,3 +33,5 @@
 
 
 build
+__pycache__
+.venv

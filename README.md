@@ -2,9 +2,10 @@
 
 ## clang-format
 
-```shell
+```bash
 sudo apt install clang-format
-make format
+clang-format -i src/*.c --verbose
+clang-format -i src/*.h --verbose
 ```
 
 ## Lab1
@@ -17,4 +18,14 @@ gcc pi.c -o pi.o
 
 ```bash
 gcc mandelbrot.c -o mandelbrot.o -lm
+```
+
+Plot utils
+
+```bash
+cd utils
+python3 -m venv .venv
+source .venv/bin/activate
+pip install numpy pandas matplotlib
+python3 -m main
 ```

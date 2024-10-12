@@ -3,7 +3,6 @@ project(PeppeThread VERSION 0.1.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 
-# Добавляем цель для форматирования кода
 find_program(CLANG_FORMAT NAMES clang-format)
 
 if(CLANG_FORMAT)

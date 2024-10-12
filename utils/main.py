@@ -4,7 +4,7 @@ import numpy as np
 
 
 def main() -> None:
-    df = pd.read_csv('mandelbrot.csv', header=None, names=['x', 'y'])
+    df = pd.read_csv('../src/mandelbrot.csv', header=None, names=['x', 'y'])
 
     plt.figure(figsize=(10, 8))
 
@@ -21,7 +21,8 @@ def main() -> None:
     plt.title('Mandelbrot Set Visualization', fontsize=16)
     plt.grid(True, which='both', linestyle='--', linewidth=0.7)
     plt.gca().set_aspect('equal', adjustable='box')
-    plt.show()
+    plt.savefig('output_mandelbrot.png')
+    print('File was saved')
 
 
 if __name__ == '__main__':
