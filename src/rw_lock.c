@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h> // Для функции sleep()
+#include <string.h> // Для обработки аргументов командной строки
+
+int verbose = 0; // Флаг для контроля логирования
 
 typedef struct {
     pthread_mutex_t lock;            // Мьютекс для защиты структуры
@@ -12,6 +15,12 @@ typedef struct {
     int waiting_writers;             // Счётчик писателей, ожидающих доступа
 } rwlock_t;
 
+void log_message(const char* message) {
+    if (verbose) {
+        printf("%s\n", message);
+    }
+}
+
 void rwlock_init(rwlock_t* rwlock) {
     pthread_mutex_init(&rwlock->lock, NULL);
     pthread_cond_init(&rwlock->readers_cond, NULL);
@@ -19,37 +28,41 @@ void rwlock_init(rwlock_t* rwlock) {
     rwlock->readers = 0;
     rwlock->writers = 0;
     rwlock->waiting_writers = 0;
-    printf("rwlock initialized\n");
+    log_message("rwlock initialized");
 }
 
 void rwlock_destroy(rwlock_t* rwlock) {
     pthread_mutex_destroy(&rwlock->lock);
     pthread_cond_destroy(&rwlock->readers_cond);
     pthread_cond_destroy(&rwlock->writers_cond);
-    printf("rwlock destroyed\n");
+    log_message("rwlock destroyed");
 }
 
 void rwlock_rlock(rwlock_t* rwlock) {
     pthread_mutex_lock(&rwlock->lock);
     while (rwlock->writers > 0 || rwlock->waiting_writers > 0) {
-        printf("Reader waiting for writers to finish\n");
+        log_message("Reader waiting for writers to finish");
         pthread_cond_wait(&rwlock->readers_cond, &rwlock->lock);
     }
     rwlock->readers++;
-    printf("Reader acquired read lock, active readers: %d\n", rwlock->readers);
+    char buf[100];
+    snprintf(buf, sizeof(buf), "Reader acquired read lock, active readers: %d", rwlock->readers);
+    log_message(buf);
     pthread_mutex_unlock(&rwlock->lock);
 }
 
 void rwlock_wlock(rwlock_t* rwlock) {
     pthread_mutex_lock(&rwlock->lock);
     rwlock->waiting_writers++;
-    printf("Writer waiting, waiting writers: %d\n", rwlock->waiting_writers);
+    char buf[100];
+    snprintf(buf, sizeof(buf), "Writer waiting, waiting writers: %d", rwlock->waiting_writers);
+    log_message(buf);
     while (rwlock->writers > 0 || rwlock->readers > 0) {
         pthread_cond_wait(&rwlock->writers_cond, &rwlock->lock);
     }
     rwlock->waiting_writers--;
     rwlock->writers++;
-    printf("Writer acquired write lock\n");
+    log_message("Writer acquired write lock");
     pthread_mutex_unlock(&rwlock->lock);
 }
 
@@ -57,17 +70,19 @@ void rwlock_unlock(rwlock_t* rwlock) {
     pthread_mutex_lock(&rwlock->lock);
     if (rwlock->writers > 0) {
         rwlock->writers--;
-        printf("Writer released write lock\n");
+        log_message("Writer released write lock");
     } else if (rwlock->readers > 0) {
         rwlock->readers--;
-        printf("Reader released read lock, active readers: %d\n", rwlock->readers);
+        char buf[100];
+        snprintf(buf, sizeof(buf), "Reader released read lock, active readers: %d", rwlock->readers);
+        log_message(buf);
     }
 
     if (rwlock->writers == 0 && rwlock->waiting_writers > 0) {
-        printf("Signaling writer\n");
+        log_message("Signaling writer");
         pthread_cond_signal(&rwlock->writers_cond);
     } else if (rwlock->writers == 0 && rwlock->readers == 0) {
-        printf("Broadcasting to all waiting readers\n");
+        log_message("Broadcasting to all waiting readers");
         pthread_cond_broadcast(&rwlock->readers_cond);
     }
     pthread_mutex_unlock(&rwlock->lock);
@@ -77,7 +92,7 @@ void rwlock_unlock(rwlock_t* rwlock) {
 void* reader(void* arg) {
     rwlock_t* rwlock = (rwlock_t*)arg;
     rwlock_rlock(rwlock);
-    printf("Reader is reading\n");
+    log_message("Reader is reading");
     sleep(1); // Чтение занимает некоторое время
     rwlock_unlock(rwlock);
     return NULL;
@@ -86,13 +101,18 @@ void* reader(void* arg) {
 void* writer(void* arg) {
     rwlock_t* rwlock = (rwlock_t*)arg;
     rwlock_wlock(rwlock);
-    printf("Writer is writing\n");
+    log_message("Writer is writing");
     sleep(2); // Запись занимает некоторое время
     rwlock_unlock(rwlock);
     return NULL;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    // Проверяем аргументы командной строки
+    if (argc > 1 && strcmp(argv[1], "--verbose") == 0) {
+        verbose = 1; // Включаем логирование
+    }
+
     pthread_t r1, r2, r3, w1, w2;
     rwlock_t rwlock;
 
