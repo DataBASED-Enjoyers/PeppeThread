@@ -12,7 +12,6 @@ typedef struct {
     int waiting_writers;
 } rwlock_t;
 
-void log_message(const char* message);
 void rwlock_init(rwlock_t* rwlock);
 
 void rwlock_destroy(rwlock_t* rwlock);
@@ -21,4 +20,5 @@ void rwlock_rdlock(rwlock_t* rwlock);
 void rwlock_wrlock(rwlock_t* rwlock);
 
 void rwlock_unlock(rwlock_t* rwlock);
+
 #endif
