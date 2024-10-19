@@ -1,57 +1,64 @@
 import subprocess
 import csv
-import time
 import re
+import os
 
-# Параметры
-n_runs = 1000        # Количество запусков программы
-nthreads = 2         # Число потоков (укажите нужное значение)
-ntrials = 100000    # Число испытаний на запуск (укажите нужное значение)
 
-# Имя скомпилированной C-программы
-program_name = './pi'  # Убедитесь, что путь к программе указан правильно
+def start_benchmark(nthreads, n_runs = 1000, ntrials=10_000_000):
+    program_name = './pi.o'
+    folder_name = 'benchmarks'
 
-# CSV-файл для сохранения результатов
-csv_file = 'execution_times_2_threads.csv'
+    os.makedirs(folder_name, exist_ok=True)
+    csv_file = f'{folder_name}/execution_times_{nthreads}_threads.csv'
 
-# Списки для хранения результатов
-execution_times = []
-pi_estimates = []
+    execution_times = []
+    pi_estimates = []
 
-for i in range(n_runs):
-    # Запуск программы и захват вывода
-    result = subprocess.run([program_name, str(nthreads), str(ntrials)], capture_output=True, text=True)
-    
-    # Извлечение времени выполнения и оценки π из вывода программы
-    output = result.stdout
+    for i in range(n_runs):
+        result = subprocess.run([program_name, str(nthreads), str(ntrials)], 
+                                capture_output=True, text=True)
+        output = result.stdout
+        time_match = re.search(r'Execution Time = ([\d\.]+) seconds', output)
+        pi_match = re.search(r'Estimated π = ([\d\.]+)', output)
 
-    # Используем регулярные выражения для поиска нужных значений
-    time_match = re.search(r'Execution Time = ([\d\.]+) seconds', output)
-    pi_match = re.search(r'Estimated π = ([\d\.]+)', output)
+        if time_match and pi_match:
+            exec_time = float(time_match.group(1))
+            pi_estimate = float(pi_match.group(1))
+        else:
+            continue
+        execution_times.append(exec_time)
+        pi_estimates.append(pi_estimate)
+        
+        if (i+1) % 100 == 0:
+            print(f'Выполнено {i+1} запусков из {n_runs}')
 
-    if time_match and pi_match:
-        exec_time = float(time_match.group(1))
-        pi_estimate = float(pi_match.group(1))
-    else:
-        # Если парсинг не удался, можно пропустить этот запуск или обработать ошибку
-        continue
+    with open(csv_file, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(['Запуск', 'Время выполнения (с)', 'Оценка π'])
+        for idx, (exec_time, pi_estimate) in enumerate(zip(execution_times, pi_estimates), 1):
+            csvwriter.writerow([idx, exec_time, pi_estimate])
 
-    # Сохранение результатов
-    execution_times.append(exec_time)
-    pi_estimates.append(pi_estimate)
-    
-    # Вывод прогресса
-    if (i+1) % 100 == 0:
-        print(f'Выполнено {i+1} запусков из {n_runs}')
+    print(f'Результаты сохранены в файл {csv_file}')
 
-# Сохранение результатов в CSV-файл
-with open(csv_file, 'w', newline='') as csvfile:
-    csvwriter = csv.writer(csvfile)
-    csvwriter.writerow(['Запуск', 'Время выполнения (с)', 'Оценка π'])
-    for idx, (exec_time, pi_estimate) in enumerate(zip(execution_times, pi_estimates), 1):
-        csvwriter.writerow([idx, exec_time, pi_estimate])
+    average_time = sum(execution_times) / len(execution_times)
+    print(f'Среднее время выполнения: {average_time:.6f} секунд')
+    return average_time
 
-print(f'Результаты сохранены в файл {csv_file}')
 
-average_time = sum(execution_times) / len(execution_times)
-print(f'Среднее время выполнения: {average_time:.6f} секунд')
+if __name__ == '__main__':
+    avg_time_thread_1 = 0
+    avg_time_thread_n = 0
+
+    S, E = 0, 0
+
+    for n_thread in (1, 2, 8, 16, 64):
+        if n_thread == 1:
+            avg_time_thread_1 = start_benchmark(nthreads=n_thread)
+        else:
+            avg_time_thread_n = start_benchmark(nthreads=n_thread)
+            S = avg_time_thread_1 / avg_time_thread_n
+            E = S / n_thread
+
+            print(f"{E=} | {S=}")
+
+        print('-' * 50)

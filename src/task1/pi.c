@@ -14,9 +14,16 @@ typedef struct {
 void *compute_pi(void *arg) {
     ThreadData *data = (ThreadData *)arg;
     long local_count = 0;
+
+    struct drand48_data rand_buffer;
+    srand48_r(data->seed, &rand_buffer);
+
     for (long i = 0; i < data->trials; i++) {
-        double x = (double)rand_r(&data->seed) / RAND_MAX * 2.0 - 1.0;
-        double y = (double)rand_r(&data->seed) / RAND_MAX * 2.0 - 1.0;
+        double x, y;
+        drand48_r(&rand_buffer, &x);  // rand_r for test_1
+        drand48_r(&rand_buffer, &y);  // rand_r for test_1
+        x = x * 2.0 - 1.0;
+        y = y * 2.0 - 1.0;
         if (x * x + y * y <= 1.0) local_count++;
     }
     data->count = local_count;
