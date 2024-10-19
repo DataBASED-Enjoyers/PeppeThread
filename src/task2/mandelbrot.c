@@ -2,6 +2,9 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+
+#include "timer.h"
 
 typedef struct {
     int thread_id;
@@ -54,7 +57,7 @@ void *mandelbrot_thread(void *arg) {
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        fprintf(stderr, "Использование: %s nthreads npoints\n", argv[0]);
+        fprintf(stderr, "Usage: %s nthreads npoints\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -66,9 +69,12 @@ int main(int argc, char *argv[]) {
 
     FILE *file = fopen("mandelbrot.csv", "w");
     if (!file) {
-        perror("Ошибка открытия файла");
+        perror("Error opening file");
         exit(EXIT_FAILURE);
     }
+
+    double start, end;
+    GET_TIME(start);
 
     pthread_t threads[nthreads];
     thread_data_t thread_data[nthreads];
@@ -89,7 +95,7 @@ int main(int argc, char *argv[]) {
         int rc = pthread_create(&threads[i], NULL, mandelbrot_thread,
                                 (void *)&thread_data[i]);
         if (rc) {
-            fprintf(stderr, "Ошибка создания потока: %d\n", rc);
+            fprintf(stderr, "Error creating thread: %d\n", rc);
             exit(EXIT_FAILURE);
         }
     }
@@ -99,6 +105,10 @@ int main(int argc, char *argv[]) {
     }
 
     pthread_mutex_destroy(&file_mutex);
+
+    GET_TIME(end);
+    printf("Execution Time = %f seconds\n", end - start);
+
     fclose(file);
 
     return 0;
