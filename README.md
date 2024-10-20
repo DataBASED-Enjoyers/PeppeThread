@@ -1,5 +1,10 @@
 # PeppeThread
 
+## Выполнили:
+* Красильников Николай Владимирович (21 ПМИ-1)
+* Еременко Данил Тимофеевич (21 ПМИ-1)
+* Кудасов Максим Игоревич (21 ПМИ-2)
+
 ## Task 1
 [Task 1 report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/main/src/task1/report_task_1.md)
 
