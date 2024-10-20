@@ -4,11 +4,9 @@ import re
 import os
 
 
-def start_benchmark(nthreads, test, n_runs = 1000):
-    program_original_name = './pth_ll_rwl.o'
-    program_peppe_name = './ppt_ll_rwl.o'
-    program_name = program_peppe_name
-    folder_name = f'benchmarks_{test[0]}_{test[1]}_{test[2]}_{test[3]}'
+def start_benchmark(nthreads, test, program_name, n_runs = 1000):
+    bench_folder = program_name.split('.')[1][1:]
+    folder_name = f'{bench_folder}/benchmarks_{test[0]}_{test[1]}_{test[2]}_{test[3]}'
 
     os.makedirs(folder_name, exist_ok=True)
     csv_file = f'{folder_name}/execution_times_{nthreads}_threads.csv'
@@ -53,6 +51,9 @@ if __name__ == '__main__':
     avg_time_thread_1 = 0
     avg_time_thread_n = 0
 
+    file = open('tables.txt', mode='w')
+    file.close()
+
     S, E = 0, 0
 
     # test = [num_of_keys, num_of_ops, search_rate, insert_rate]
@@ -63,15 +64,48 @@ if __name__ == '__main__':
     test_5 = [1024, 1024, 0.8, 0.1]
     test_6 = [1024, 1024, 0.1, 0.1]
 
-    for test in (test_1, test_2, test_3, test_4, test_5, test_6):
-        for n_thread in (1, 2, 8, 16, 20, 64):
-            if n_thread == 1:
-                avg_time_thread_1 = start_benchmark(nthreads=n_thread, test=test)
-            else:
-                avg_time_thread_n = start_benchmark(nthreads=n_thread, test=test)
-                S = avg_time_thread_1 / avg_time_thread_n
-                E = S / n_thread
+    program_original_name = './pth_ll_rwl.o'
+    program_peppe_name = './ppt_ll_rwl.o'
 
-                print(f"{E=} | {S=}")
+    for num_test, test in enumerate((test_1, test_2, test_3, test_4, test_5, test_6), start=1):
 
+        for p in (program_original_name, program_peppe_name):
+            print(f"{p:.^50}")
+            S_list = []
+            E_list = []
+            time_list = []
+            for n_thread in (1, 2, 8, 16, 20, 64):
+                if n_thread == 1:
+                    avg_time_thread_1 = start_benchmark(nthreads=n_thread, test=test, program_name=p)
+                    S = '-'
+                    E = '-'
+                    time_list.append(avg_time_thread_1)
+                else:
+                    avg_time_thread_n = start_benchmark(nthreads=n_thread, test=test, program_name=p)
+                    S = round(avg_time_thread_1 / avg_time_thread_n, 4)
+                    E = round(S / n_thread, 4)
+                    time_list.append(avg_time_thread_n)
+
+                E_list.append(E)
+                S_list.append(S)
+
+            print(E_list)
+            print(S_list)
+            print(time_list)
             print('-' * 50)
+
+            with open('tables.txt', 'a') as file:
+                    table = (
+                        f"| Количество потоков | Среднее время выполнения (`T_avg`), сек | Ускорение (`S`) | Эффективность (`E`) |\n",
+                        f"|--------------------|-----------------------------------------|-----------------|---------------------|\n",
+                        f"| 1 (последовательный алгоритм) | {time_list[0]:.6f} | {S_list[0]} | {E_list[0]} |\n",
+                        f"| 2  | {time_list[1]:.6f} | {S_list[1]} | {E_list[1]} |\n",
+                        f"| 8  | {time_list[2]:.6f} | {S_list[2]} | {E_list[2]} |\n",
+                        f"| 16 | {time_list[3]:.6f} | {S_list[3]} | {E_list[3]} |\n",
+                        f"| 20 | {time_list[4]:.6f} | {S_list[4]} | {E_list[4]} |\n",
+                        f"| 64 | {time_list[5]:.6f} | {S_list[5]} | {E_list[5]} |\n"
+                    )
+                    file.write("".join(table))
+                    file.write('\n\n')
+
+        print(f"Done {num_test}/6")
