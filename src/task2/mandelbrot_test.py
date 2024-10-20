@@ -4,7 +4,7 @@ import os
 import re
 
 def start_benchmark(nthreads, n_runs=10, avg_time_thread_1_dict=None):
-    program_name = './mandelbrot.o'  # Убедитесь, что путь к вашей программе правильный
+    program_name = './mandelbrot.o'
     folder_name = 'benchmarks'
     npoints_list = [500, 1000, 2000]
 
@@ -13,7 +13,6 @@ def start_benchmark(nthreads, n_runs=10, avg_time_thread_1_dict=None):
 
     with open(csv_file, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile)
-        # Добавляем заголовки столбцов
         csvwriter.writerow(['npoints', 'nthreads', 'Среднее время (с)', 'Ускорение (S)', 'Эффективность (E)'])
 
         for npoints in npoints_list:
@@ -41,9 +40,7 @@ def start_benchmark(nthreads, n_runs=10, avg_time_thread_1_dict=None):
             else:
                 average_time = None
 
-            # Вычисление S и E
             if nthreads == 1:
-                # Сохраняем среднее время для nthreads=1
                 avg_time_thread_1_dict[npoints] = average_time
                 S = '-'
                 E = '-'
@@ -63,7 +60,7 @@ def start_benchmark(nthreads, n_runs=10, avg_time_thread_1_dict=None):
     print(f'Результаты сохранены в файл {csv_file}')
 
 if __name__ == '__main__':
-    avg_time_thread_1_dict = {}  # Словарь для хранения среднего времени при nthreads=1
+    avg_time_thread_1_dict = {}
 
     for n_thread in (1, 2, 8, 20, 64):
         start_benchmark(nthreads=n_thread, avg_time_thread_1_dict=avg_time_thread_1_dict)
