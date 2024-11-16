@@ -15,3 +15,11 @@ sudo apt-get install libopenmpi-dev
 mpic++ path_to_file.c -o path_to_object.o
 mpirun -np 4 path_to_object.o
 ```
+
+## Python utils start:
+```bash
+cd utils
+python3 -m venv .venv
+source .venv/bin/activate
+pip3 install numpy pandas matplotlib
+```
