@@ -1,12 +1,14 @@
 import subprocess
 import matplotlib.pyplot as plt
+import os
 
-# Функция для запуска программы и сбора результатов
+ROOT_DIR = os.path.abspath('..')
+
 def run_mpi_program(num_processes):
     result = {}
     try:
         output = subprocess.run(
-            ["mpirun", "-np", str(num_processes), "./matmul"],
+            ["mpirun", "-np", str(num_processes), ROOT_DIR + "/src/task1/matmul.o"],
             capture_output=True, text=True
         )
         lines = output.stdout.splitlines()
@@ -17,7 +19,7 @@ def run_mpi_program(num_processes):
                 result["column_split"] = float(line.split(": ")[1])
             elif "Block-split time" in line:
                 result["block_split"] = float(line.split(": ")[1])
-        # Проверяем, все ли ключи присутствуют в результатах
+
         if "row_split" not in result:
             print(f"Warning: 'row_split' time missing for {num_processes} processes.")
         if "column_split" not in result:
@@ -28,33 +30,33 @@ def run_mpi_program(num_processes):
         print(f"Error running MPI program with {num_processes} processes: {e}")
     return result
 
-# Параметры для экспериментов
-matrix_sizes = [256, 512, 1024]  # Размеры матрицы
-num_processes = [1, 2, 4, 8]     # Количество процессов
+def main() -> None:
+    matrix_sizes = [256, 512, 1024] 
+    num_processes = [1, 2, 4, 8]
 
-# Сбор данных
-data = {}
-for size in matrix_sizes:
-    data[size] = {}
-    for processes in num_processes:
-        print(f"Running for matrix size {size} with {processes} processes...")
-        result = run_mpi_program(processes)
-        data[size][processes] = result
+    data = {}
+    for size in matrix_sizes:
+        data[size] = {}
+        for processes in num_processes:
+            print(f"Running for matrix size {size} with {processes} processes...")
+            result = run_mpi_program(processes)
+            data[size][processes] = result
 
-# Построение графиков
-for size in matrix_sizes:
-    plt.figure()
-    plt.title(f"Execution Time for Matrix Size {size}")
-    for method in ["row_split", "column_split", "block_split"]:
-        times = [data[size][p].get(method, None) for p in num_processes]
-        # Убираем значения None из графика
-        filtered_processes = [p for p, time in zip(num_processes, times) if time is not None]
-        filtered_times = [time for time in times if time is not None]
-        if filtered_times:
-            plt.plot(filtered_processes, filtered_times, label=method)
-    plt.xlabel("Number of Processes")
-    plt.ylabel("Execution Time (s)")
-    plt.legend()
-    plt.show()
+if __name__ == '__main__':
+    main()
 
-# Опционально: Добавьте графики ускорения и эффективности
+# # Построение графиков
+# for size in matrix_sizes:
+#     plt.figure()
+#     plt.title(f"Execution Time for Matrix Size {size}")
+#     for method in ["row_split", "column_split", "block_split"]:
+#         times = [data[size][p].get(method, None) for p in num_processes]
+#         # Убираем значения None из графика
+#         filtered_processes = [p for p, time in zip(num_processes, times) if time is not None]
+#         filtered_times = [time for time in times if time is not None]
+#         if filtered_times:
+#             plt.plot(filtered_processes, filtered_times, label=method)
+#     plt.xlabel("Number of Processes")
+#     plt.ylabel("Execution Time (s)")
+#     plt.legend()
+#     plt.show()
