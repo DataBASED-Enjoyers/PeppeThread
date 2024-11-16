@@ -22,6 +22,7 @@ void row_split_multiplication(int rank, int size, int n, int *matrix, int *vecto
     }
 
     MPI_Gather(local_result, rows_per_process, MPI_INT, result, rows_per_process, MPI_INT, 0, MPI_COMM_WORLD);
+
     free(local_matrix);
     free(local_result);
 }
@@ -43,6 +44,7 @@ void column_split_multiplication(int rank, int size, int n, int *matrix, int *ve
     }
 
     MPI_Reduce(local_result, result, n, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
     free(local_matrix);
     free(local_vector);
     free(local_result);
@@ -65,38 +67,36 @@ void block_split_multiplication(int rank, int size, int n, int *matrix, int *vec
     }
 
     MPI_Gather(local_result, block_size, MPI_INT, result, block_size, MPI_INT, 0, MPI_COMM_WORLD);
+
     free(local_matrix);
     free(local_vector);
     free(local_result);
 }
 
 int main(int argc, char *argv[]) {
-    int n = 1024; // Размер матрицы и вектора
+    int n = 1024; // Adjust matrix size as needed
     int rank, size;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     int *matrix = NULL;
-    int *vector = NULL;
-    int *result = NULL;
+    int *vector = (int*)malloc(n * sizeof(int));
+    int *result = (rank == 0) ? (int*)malloc(n * sizeof(int)) : NULL;
 
     if (rank == 0) {
         matrix = (int*)malloc(n * n * sizeof(int));
-        vector = (int*)malloc(n * sizeof(int));
-        result = (int*)malloc(n * sizeof(int));
-
         for (int i = 0; i < n; i++) {
             vector[i] = 1;
             for (int j = 0; j < n; j++) {
-                matrix[i * n + j] = 1;
+                matrix[i * n + j] = i + j + 1;
             }
         }
     }
 
     double start, end;
 
-    // Разбиение по строкам
+    // Row-split multiplication
     start = MPI_Wtime();
     row_split_multiplication(rank, size, n, matrix, vector, result);
     end = MPI_Wtime();
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
         printf("Row-split time: %f seconds\n", end - start);
     }
 
-    // Разбиение по столбцам
+    // Column-split multiplication
     start = MPI_Wtime();
     column_split_multiplication(rank, size, n, matrix, vector, result);
     end = MPI_Wtime();
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
         printf("Column-split time: %f seconds\n", end - start);
     }
 
-    // Разбиение по блокам
+    // Block-split multiplication
     start = MPI_Wtime();
     block_split_multiplication(rank, size, n, matrix, vector, result);
     end = MPI_Wtime();
@@ -122,9 +122,9 @@ int main(int argc, char *argv[]) {
 
     if (rank == 0) {
         free(matrix);
-        free(vector);
         free(result);
     }
+    free(vector);
 
     MPI_Finalize();
     return 0;
