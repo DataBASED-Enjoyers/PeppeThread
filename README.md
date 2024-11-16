@@ -8,7 +8,7 @@ find src -name "*.c" -exec clang-format -i --verbose {} +
 clang-format -i include/*.h --verbose
 ```
 
-## compile mpi:
+## MPI start:
 
 ```bash
 sudo apt-get install libopenmpi-dev
