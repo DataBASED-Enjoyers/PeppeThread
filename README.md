@@ -13,4 +13,5 @@ clang-format -i include/*.h --verbose
 ```bash
 sudo apt-get install libopenmpi-dev
 mpic++ path_to_file.c -o path_to_object.o
+mpirun -np 4 path_to_object.o
 ```
