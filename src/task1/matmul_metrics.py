@@ -6,7 +6,7 @@ def run_mpi_program(num_processes):
     result = {}
     try:
         output = subprocess.run(
-            ["mpirun", "-np", str(num_processes), "./matrix_vector_multiplication"],
+            ["mpirun", "-np", str(num_processes), "./matmul"],
             capture_output=True, text=True
         )
         lines = output.stdout.splitlines()
