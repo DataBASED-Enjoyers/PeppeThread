@@ -7,8 +7,8 @@ find_package(MPI)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
 add_executable(
-    main
-    src/main.c
+    task_1
+    src/task1/matmul.c
 )
 
-target_link_libraries(main ${MPI_C_LIBRARIES})
+target_link_libraries(task_1 ${MPI_C_LIBRARIES})
