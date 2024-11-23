@@ -11,4 +11,10 @@ add_executable(
     src/task1/matmul.c
 )
 
+add_executable(
+    task_2
+    src/task2/cannon_matmul.c
+)
+
 target_link_libraries(task_1 ${MPI_C_LIBRARIES})
+target_link_libraries(task_2 ${MPI_C_LIBRARIES})
