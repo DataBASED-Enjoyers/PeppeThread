@@ -78,11 +78,11 @@ int main(int argc, char *argv[]) {
 
     // Вывод результата в главном процессе
     if (rank == 0) {
-        printf("Результат умножения матрицы на вектор:\n");
-        for (int i = 0; i < N; i++) {
-            printf("%d ", C[i]);
-        }
-        printf("\n");
+        // printf("Результат умножения матрицы на вектор:\n");
+        // for (int i = 0; i < N; i++) {
+        //     printf("%d ", C[i]);
+        // }
+        // printf("\n");
         printf("Время выполнения: %.6f секунд\n", end_time - start_time);
     }
 
