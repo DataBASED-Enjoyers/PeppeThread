@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <mpi.h>
 
+
 int main(int argc, char *argv[]) {
     int rank, size;
 
@@ -83,7 +84,7 @@ int main(int argc, char *argv[]) {
         //     printf("%d ", C[i]);
         // }
         // printf("\n");
-        printf("Время выполнения: %.6f секунд\n", end_time - start_time);
+        printf("%.6f", end_time - start_time);
     }
 
     // Завершение работы MPI
