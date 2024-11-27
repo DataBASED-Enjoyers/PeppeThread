@@ -1,99 +1,274 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <mpi.h>
+#include <math.h>
 
+int allocMatrix(int*** mat, int rows, int cols) {
+	int* p = (int*)malloc(sizeof(int*) * rows * cols);
+	if (!p) {
+		return -1;
+	}
+	
+	*mat = (int**)malloc(rows * sizeof(int*));
+	if (!mat) {
+		free(p);
+		return -1;
+	}
 
-int main(int argc, char *argv[]) {
-    int rank, size;
+	// Set up the pointers into the contiguous memory
+	for (int i = 0; i < rows; i++) {
+		(*mat)[i] = &(p[i * cols]);
+	}
+	return 0;
+}
 
-    // Чтение размера матрицы из окружения
-    int N = atoi(getenv("MAT_SIZE")); // Размер матрицы и вектора
-    if (N <= 0) {
-        if (rank == 0) {
-            printf("Ошибка: неверный размер матрицы (проверьте переменную окружения MAT_SIZE).\n");
-        }
-        MPI_Finalize();
-        return -1;
+int freeMatrix(int ***mat) {
+	free(&((*mat)[0][0]));
+	free(*mat);
+	return 0;
+}
+
+void matrixMultiply(int **a, int **b, int rows, int cols, int ***c) {
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			int val = 0;
+			for (int k = 0; k < rows; k++) {
+				val += a[i][k] * b[k][j];
+ 			}
+			(*c)[i][j] = val;
+		}
+	}
+}
+
+void printMatrix(int **mat, int size) {
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size; j++) {
+			printf("%d ", mat[i][j]);
+		}
+		printf("\n");
+	}
+}
+
+void createMatrix(int*** mat, int size, int isIdentity) {
+    // Выделение памяти под матрицу
+    if (allocMatrix(mat, size, size) != 0) {
+        printf("[ERROR] Matrix allocation failed!\n");
+        MPI_Abort(MPI_COMM_WORLD, 1);
     }
+
+    // Заполнение матрицы
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            if (isIdentity && i == j) {
+                (*mat)[i][j] = 1;
+            } else if (isIdentity) {
+                (*mat)[i][j] = 0;
+            } else {
+                (*mat)[i][j] = rand() % 10;
+            }
+        }
+    }
+}
+
+
+int main(int argc, char* argv[]) {
+    MPI_Comm cartComm;
+    int dim[2], period[2], reorder;
+    int coord[2], id;
+    int **A = NULL, **B = NULL, **C = NULL;
+    int **localA = NULL, **localB = NULL, **localC = NULL;
+    int rows = 0;
+    int columns;
+    int count = 0;
+    int worldSize;
+    int procDim;
+    int blockDim;
+    int left, right, up, down;
+    int bCastData[4];
+
+	int is_B_identity = 1;
 
     // Инициализация MPI
     MPI_Init(&argc, &argv);
+
+    // Получение размера мира и ранга
+    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+    int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    // Проверка на соответствие числа процессов
-    if (N % size != 0) {
+    // Считывание переменной MAT_SIZE из окружения
+    char* matSizeEnv = getenv("MAT_SIZE");
+    if (!matSizeEnv) {
         if (rank == 0) {
-            printf("Количество процессов должно быть кратно размеру матрицы.\n");
+            printf("[ERROR] MAT_SIZE environment variable not set!\n");
         }
-        MPI_Finalize();
-        return -1;
+        MPI_Abort(MPI_COMM_WORLD, 1);
     }
+    rows = columns = atoi(matSizeEnv);
 
-    // Инициализация данных
-    int *A = (int*)malloc(N * N * sizeof(int));  // Явное приведение типа
-    int *B = (int*)malloc(N * sizeof(int));      // Явное приведение типа
-    int *C = (int*)malloc(N * sizeof(int));      // Явное приведение типа
-
-    // Блоки данных для текущего процесса
-    int block_size = N / size;  // Блок матрицы для каждого процесса
-    int *A_block = (int*)malloc(block_size * N * sizeof(int));  // Явное приведение типа
-    int *C_block = (int*)malloc(block_size * sizeof(int));      // Явное приведение типа
-
-    // Инициализация данных
     if (rank == 0) {
-        // Заполнение матрицы A и вектора B
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
-                A[i * N + j] = i * N + j + 1;
-            }
-            B[i] = i + 1;
+
+        double sqroot = sqrt(worldSize);
+        if ((sqroot - floor(sqroot)) != 0) {
+            printf("[ERROR] Number of processes must be a perfect square!\n");
+            MPI_Abort(MPI_COMM_WORLD, 2);
         }
-    }
-
-    // Засекаем время до начала работы
-    double start_time = MPI_Wtime();
-
-    // Разделение матрицы A между процессами
-    MPI_Scatter(A, block_size * N, MPI_INT, A_block, block_size * N, MPI_INT, 0, MPI_COMM_WORLD);
-
-    // Распространение вектора B ко всем процессам
-    MPI_Bcast(B, N, MPI_INT, 0, MPI_COMM_WORLD);
-
-    // Умножение блоков матрицы A на вектор B
-    for (int i = 0; i < block_size; i++) {
-        C_block[i] = 0;
-        for (int j = 0; j < N; j++) {
-            C_block[i] += A_block[i * N + j] * B[j];
+        int intRoot = (int)sqroot;
+        if (columns % intRoot != 0 || rows % intRoot != 0) {
+            printf("[ERROR] Number of rows/columns not divisible by %d!\n", intRoot);
+            MPI_Abort(MPI_COMM_WORLD, 3);
         }
+        procDim = intRoot;
+        blockDim = columns / intRoot;
+
+        srand(time(NULL));
+        createMatrix(&A, rows, 0);
+        createMatrix(&B, rows, is_B_identity);
+
+        // printf("Matrix A:\n");
+        // printMatrix(A, rows);
+        // printf("Matrix B:\n");
+        // printMatrix(B, rows);
+
+        if (allocMatrix(&C, rows, columns) != 0) {
+            printf("[ERROR] Matrix allocation for C failed!\n");
+            MPI_Abort(MPI_COMM_WORLD, 4);
+        }
+
+        bCastData[0] = procDim;
+        bCastData[1] = blockDim;
+        bCastData[2] = rows;
+        bCastData[3] = columns;
     }
 
-    // Собираем результаты в главный процесс
-    MPI_Gather(C_block, block_size, MPI_INT, C, block_size, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&bCastData, 4, MPI_INT, 0, MPI_COMM_WORLD);
+    procDim = bCastData[0];
+    blockDim = bCastData[1];
+    rows = bCastData[2];
+    columns = bCastData[3];
 
-    // Синхронизация всех процессов
-    MPI_Barrier(MPI_COMM_WORLD);
+    dim[0] = procDim; dim[1] = procDim;
+    period[0] = 1; period[1] = 1;
+    reorder = 1;
+    MPI_Cart_create(MPI_COMM_WORLD, 2, dim, period, reorder, &cartComm);
 
-    // Засекаем время после выполнения
-    double end_time = MPI_Wtime();
+    allocMatrix(&localA, blockDim, blockDim);
+    allocMatrix(&localB, blockDim, blockDim);
 
-    // Вывод результата в главном процессе
-    if (rank == 0) {
-        // printf("Результат умножения матрицы на вектор:\n");
-        // for (int i = 0; i < N; i++) {
-        //     printf("%d ", C[i]);
-        // }
-        // printf("\n");
-        printf("%.6f", end_time - start_time);
-    }
+	int globalSize[2] = { rows, columns };
+	int localSize[2] = { blockDim, blockDim };
+	int starts[2] = { 0,0 };
+	MPI_Datatype type, subarrtype;
+	MPI_Type_create_subarray(2, globalSize, localSize, starts, MPI_ORDER_C, MPI_INT, &type);
+	MPI_Type_create_resized(type, 0, blockDim * sizeof(int), &subarrtype);
+	MPI_Type_commit(&subarrtype);
 
-    // Завершение работы MPI
-    free(A);
-    free(B);
-    free(C);
-    free(A_block);
-    free(C_block);
+	int *globalptrA = NULL;
+	int *globalptrB = NULL;
+	int *globalptrC = NULL;
+	if (rank == 0) {
+		globalptrA = &(A[0][0]);
+		globalptrB = &(B[0][0]);
+		globalptrC = &(C[0][0]);
+	}
 
-    MPI_Finalize();
-    return 0;
+	int* sendCounts = (int*)malloc(sizeof(int) * worldSize);
+	int* displacements = (int*)malloc(sizeof(int) * worldSize);
+	if (rank == 0) {
+		for (int i = 0; i < worldSize; i++) {
+			sendCounts[i] = 1;
+		}
+		int disp = 0;
+		for (int i = 0; i < procDim; i++) {
+			for (int j = 0; j < procDim; j++) {
+				displacements[i * procDim + j] = disp;
+				disp += 1;
+			}
+			disp += (blockDim - 1)* procDim;
+		}
+	}
+
+	MPI_Scatterv(
+		globalptrA, sendCounts, displacements, subarrtype, 
+		&(localA[0][0]), rows * columns / (worldSize), MPI_INT,
+		0, MPI_COMM_WORLD
+	);
+
+	MPI_Scatterv(
+		globalptrB, sendCounts, displacements, subarrtype, 
+		&(localB[0][0]), rows * columns / (worldSize), MPI_INT,
+		0, MPI_COMM_WORLD
+	);
+
+	if (allocMatrix(&localC, blockDim, blockDim) != 0) {
+		printf("[ERROR] Matrix alloc for localC in rank %d failed!\n", rank);
+		MPI_Abort(MPI_COMM_WORLD, 7);
+	}
+
+	MPI_Cart_coords(cartComm, rank, 2, coord);
+	MPI_Cart_shift(cartComm, 1, coord[0], &left, &right);
+	MPI_Sendrecv_replace(&(localA[0][0]), blockDim * blockDim, MPI_INT, left, 1, right, 1, cartComm, MPI_STATUS_IGNORE);
+	MPI_Cart_shift(cartComm, 0, coord[1], &up, &down);
+	MPI_Sendrecv_replace(&(localB[0][0]), blockDim * blockDim, MPI_INT, up, 1, down, 1, cartComm, MPI_STATUS_IGNORE);
+
+
+	for (int i = 0; i < blockDim; i++) {
+		for (int j = 0; j < blockDim; j++) {
+			localC[i][j] = 0;
+		}
+	}
+
+	int** multiplyRes = NULL;
+	if (allocMatrix(&multiplyRes, blockDim, blockDim) != 0) {
+		printf("[ERROR] Matrix alloc for multiplyRes in rank %d failed!\n", rank);
+		MPI_Abort(MPI_COMM_WORLD, 8);
+	}
+	for (int k = 0; k < procDim; k++) {
+		matrixMultiply(localA, localB, blockDim, blockDim, &multiplyRes);
+
+		for (int i = 0; i < blockDim; i++) {
+			for (int j = 0; j < blockDim; j++) {
+				localC[i][j] += multiplyRes[i][j];
+			}
+		}
+		
+
+		MPI_Cart_shift(cartComm, 1, 1, &left, &right);
+		MPI_Cart_shift(cartComm, 0, 1, &up, &down);
+		MPI_Sendrecv_replace(&(localA[0][0]), blockDim * blockDim, MPI_INT, left, 1, right, 1, cartComm, MPI_STATUS_IGNORE);
+		MPI_Sendrecv_replace(&(localB[0][0]), blockDim * blockDim, MPI_INT, up, 1, down, 1, cartComm, MPI_STATUS_IGNORE);
+	}
+	
+	MPI_Gatherv(&(localC[0][0]), rows * columns / worldSize, MPI_INT,
+		globalptrC, sendCounts, displacements, subarrtype,
+		0, MPI_COMM_WORLD);
+
+	freeMatrix(&localC);
+	freeMatrix(&multiplyRes);
+
+	if (rank == 0) {
+		bool is_answer_correct = true;
+		for (int i = 0; i < rows; ++i) {
+			for (int j = 0; j < columns; ++j) {
+				if (A[i][j] != C[i][j] && is_B_identity == 1) {
+					is_answer_correct = false;
+					break;
+				}
+			}
+			if (!is_answer_correct) {
+					break;
+			}
+		}
+		if (is_answer_correct) {
+			printf("Correct matmul!\n");
+		}
+		else {
+			printf("Incorrect matmul!\n");
+		}
+		// printMatrix(C, rows);
+	}
+	
+	MPI_Finalize();
+	return 0;
 }
