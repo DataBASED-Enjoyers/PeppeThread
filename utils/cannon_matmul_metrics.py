@@ -13,7 +13,7 @@ def run_mpi_program(num_processes):
         capture_output=True, text=True
     )
     try:
-        res = float(output.stdout.splitlines()[0])
+        res = float(output.stdout.splitlines()[0].split()[-1])
         return res
     except ValueError:
         print(*output.stdout.splitlines())
@@ -62,8 +62,8 @@ def plot_matrix_performance(data, save_path):
 
 
 def main() -> None:
-    matrix_sizes = [512, 2048, 4096, 8192]
-    num_processes = [1, 2, 4, 8]
+    matrix_sizes = [x for x in range(500, 3_000) if x % 4 == 0 and x % 9 == 0][::10]
+    num_processes = [1, 4, 9]
 
     os.makedirs(f'{ROOT_DIR}/src/task2/task_2_benchmark', exist_ok=True)
     for size in matrix_sizes:
