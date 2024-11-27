@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+//
 #define CHECK_RESULTS_CORRECTNESS
 
 void row_split_multiplication(int rank, int size, int n, int *matrix,
@@ -77,68 +78,27 @@ void row_split_multiplication(int rank, int size, int n, int *matrix,
     }
 }
 
-// Умножение с разбиением по столбцам
-void column_split_multiplication(int rank, int size, int n, int *matrix,
-                                 int *vector, int *result) {
-    int cols_per_process = n / size;      // Количество столбцов на процесс
-    int extra_cols = n % size;            // Остаток столбцов
+void column_split_multiplication(int rank, int size, int n, int *matrix, int *vector, int *result) {
+    int cols_per_process = n / size;
+    int *local_matrix = (int*)malloc(n * cols_per_process * sizeof(int));
+    int *local_vector = (int*)malloc(cols_per_process * sizeof(int));
+    int *local_result = (int*)malloc(n * sizeof(int));
 
-    int local_cols = cols_per_process + (rank < extra_cols ? 1 : 0); // Локальное количество столбцов
+    MPI_Scatter(matrix, n * cols_per_process, MPI_INT, local_matrix, n * cols_per_process, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(vector, cols_per_process, MPI_INT, local_vector, cols_per_process, MPI_INT, 0, MPI_COMM_WORLD);
 
-    // Локальная матрица и результат
-    int *local_matrix = (int *)malloc(n * local_cols * sizeof(int));
-    int *local_result = (int *)calloc(n, sizeof(int));
-
-    if (!local_matrix || !local_result) {
-        printf("Rank %d: Memory allocation failed.\n", rank);
-        MPI_Abort(MPI_COMM_WORLD, MPI_ERR_NO_MEM);
-    }
-
-    int *send_counts = NULL;
-    int *displs = NULL;
-
-    if (rank == 0) {
-        send_counts = (int *)malloc(size * sizeof(int));
-        displs = (int *)malloc(size * sizeof(int));
-        if (!send_counts || !displs) {
-            printf("Memory allocation failed.\n");
-            MPI_Abort(MPI_COMM_WORLD, MPI_ERR_NO_MEM);
-        }
-        int offset = 0;
-        for (int i = 0; i < size; i++) {
-            int cols = cols_per_process + (i < extra_cols ? 1 : 0);
-            send_counts[i] = cols * n;         // Количество элементов для процесса
-            displs[i] = offset;                // Смещение для процесса
-            offset += send_counts[i];          // Увеличиваем смещение
-        }
-    }
-
-    // Распределение столбцов между процессами
-    MPI_Scatterv(matrix, send_counts, displs, MPI_INT, local_matrix,
-                 n * local_cols, MPI_INT, 0, MPI_COMM_WORLD);
-
-    // Рассылаем вектор всем процессам
-    MPI_Bcast(vector, n, MPI_INT, 0, MPI_COMM_WORLD);
-
-    // Вычисляем локальный результат
     for (int i = 0; i < n; i++) {
-        for (int j = 0; j < local_cols; j++) {
-            // Индексирование глобальной позиции столбца
-            int global_col = displs[rank] / n + j;
-            local_result[i] += local_matrix[i * local_cols + j] * vector[global_col];
+        local_result[i] = 0;
+        for (int j = 0; j < cols_per_process; j++) {
+            local_result[i] += local_matrix[i * cols_per_process + j] * local_vector[j];
         }
     }
 
-    // Суммируем результаты всех процессов
     MPI_Reduce(local_result, result, n, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    // Освобождаем память
     free(local_matrix);
+    free(local_vector);
     free(local_result);
-    if (rank == 0) {
-        free(send_counts);
-        free(displs);
-    }
 }
 
 
@@ -259,6 +219,8 @@ int main(int argc, char *argv[]) {
         sequential_multiplication(n, matrix, vector, sequential_result);
     }
 
+    MPI_Barrier(MPI_COMM_WORLD);  // Synchronize before timing
+
     double start, end;
 
     // Проверка для умножения с разбиением по строкам
@@ -317,3 +279,19 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 #endif
+
+
+    // if (rank == 0) {
+    //     matrix = (int *)malloc(n * n * sizeof(int));
+
+    //     // Инициализируем матрицу и вектор
+    //     if (matrix == NULL) {
+    //         fprintf(stderr, "Memory allocation failed on process %d\n", rank);
+    //         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    //     }
+    //     for (int i = 0; i < n; i++) {
+    //         vector[i] = 1;
+    //         for (int j = 0; j < n; j++) {
+    //             matrix[i * n + j] = i + j + 1;
+    //         }
+    //     }
