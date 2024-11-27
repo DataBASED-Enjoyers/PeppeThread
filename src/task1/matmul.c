@@ -80,26 +80,61 @@ void row_split_multiplication(int rank, int size, int n, int *matrix,
 
 void column_split_multiplication(int rank, int size, int n, int *matrix, int *vector, int *result) {
     int cols_per_process = n / size;
-    int *local_matrix = (int*)malloc(n * cols_per_process * sizeof(int));
-    int *local_vector = (int*)malloc(cols_per_process * sizeof(int));
-    int *local_result = (int*)malloc(n * sizeof(int));
+    int remainder = n % size;
+    int my_cols = (rank < remainder) ? cols_per_process + 1 : cols_per_process;
 
-    MPI_Scatter(matrix, n * cols_per_process, MPI_INT, local_matrix, n * cols_per_process, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Scatter(vector, cols_per_process, MPI_INT, local_vector, cols_per_process, MPI_INT, 0, MPI_COMM_WORLD);
+    // Allocate space for local matrix and results
+    int *local_matrix = (int*)malloc(n * my_cols * sizeof(int));
+    int *local_result = (int*)calloc(n, sizeof(int)); // Initialize to 0
 
-    for (int i = 0; i < n; i++) {
-        local_result[i] = 0;
-        for (int j = 0; j < cols_per_process; j++) {
-            local_result[i] += local_matrix[i * cols_per_process + j] * local_vector[j];
+    // Create sendcounts and displacements for MPI_Scatterv
+    int *sendcounts = NULL;
+    int *displs = NULL;
+    if (rank == 0) {
+        sendcounts = (int*)malloc(size * sizeof(int));
+        displs = (int*)malloc(size * sizeof(int));
+        int offset = 0;
+        for (int i = 0; i < size; i++) {
+            int cols = (i < remainder) ? cols_per_process + 1 : cols_per_process;
+            sendcounts[i] = cols * n;
+            displs[i] = offset;
+            offset += sendcounts[i];
         }
     }
 
-    MPI_Reduce(local_result, result, n, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    // Scatter the matrix columns among processes
+    MPI_Scatterv(matrix, sendcounts, displs, MPI_INT, local_matrix, my_cols * n, MPI_INT, 0, MPI_COMM_WORLD);
 
+    // Broadcast the full vector to all processes
+    MPI_Bcast(vector, n, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Compute the local results (processes with no columns do nothing)
+    if (my_cols > 0) {
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < my_cols; j++) {
+                int global_col_idx = rank * cols_per_process + j + (rank < remainder ? rank : remainder);
+                local_result[i] += local_matrix[i * my_cols + j] * vector[global_col_idx];
+            }
+        }
+    }
+
+    // Synchronize before reducing
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // Reduce the local results to the final result on the root process
+    // MPI_Reduce(local_result, result, n, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    // Free allocated memory
     free(local_matrix);
-    free(local_vector);
     free(local_result);
+    if (rank == 0) {
+        free(sendcounts);
+        free(displs);
+    }
 }
+
+
+
 
 
 // Умножение с разбиением по блокам
