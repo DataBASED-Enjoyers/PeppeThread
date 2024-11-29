@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    // Проверка на "квадратность" числа процессов
+    // Проверка на "полную квадратность" числа процессов
     if ((int)sqrt(size) * (int)sqrt(size) != size) {
         if (rank == ROOT) {
             fprintf(stderr, "The number of processes must be a perfect square!\n");
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
 
     // Выделяем память для локальных и глобальных данных
     double *matrix = NULL, *vector = NULL, *result = NULL;
-    double *local_matrix = (double *)malloc(local_size * mat_size * sizeof(double));
+    double *local_matrix = (double *)malloc(local_size * local_size * sizeof(double));
     double *local_result = (double *)malloc(local_size * sizeof(double));
     double *local_vector = (double *)malloc(mat_size * sizeof(double)); // копия вектора
 
@@ -94,8 +94,8 @@ int main(int argc, char **argv) {
     start_time = MPI_Wtime();
 
     // Распространение вектора и разбиение матрицы по процессам
-    MPI_Scatter(matrix, local_size * mat_size, MPI_DOUBLE,
-                local_matrix, local_size * mat_size, MPI_DOUBLE,
+    MPI_Scatter(matrix, local_size * local_size, MPI_DOUBLE,
+                local_matrix, local_size * local_size, MPI_DOUBLE,
                 ROOT, MPI_COMM_WORLD);
 
     MPI_Bcast(vector, mat_size, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
