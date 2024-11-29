@@ -6,13 +6,13 @@ from markdown_table import MarkdownTable
 
 ROOT_DIR = os.path.abspath('..')
 
-def run_mpi_program(num_processes):
+def run_mpi_program(num_processes, matrix_size):
     result = {}
     try:
         lines = []
         for prog_name in ["matmul_row.o", "matmul_col.o", "matmul_chess.o"]:
             output = subprocess.run(
-                ["mpirun", "--use-hwthread-cpus", "-np", str(num_processes), ROOT_DIR + "/src/task1/" + prog_name],
+                ["mpirun", "--use-hwthread-cpus", "-np", str(num_processes), ROOT_DIR + "/src/task1/" + prog_name, str(matrix_size)],
                 capture_output=True, text=True
             )
             lines += output.stdout.splitlines()
@@ -93,7 +93,7 @@ def main() -> None:
     os.makedirs(f'{ROOT_DIR}/src/task1/task_1_benchmark', exist_ok=True)
     for size in matrix_sizes:
         data = []
-        os.environ["MAT_SIZE"] = str(size)
+        # os.environ["MAT_SIZE"] = str(size)
         avg_time_row_1 = None
         avg_time_col_1 = None
         avg_time_block_1 = None
@@ -107,8 +107,8 @@ def main() -> None:
                 'Разбиение по столбцам (S, E)',
                 'Разбиение на блоки (S, E)']
         )
-        for processes in tqdm.tqdm(num_processes, desc=f'[Size={os.environ.get("MAT_SIZE")}]'):
-            result = run_mpi_program(processes)
+        for processes in tqdm.tqdm(num_processes, desc=f'[Size={size}]'):
+            result = run_mpi_program(processes, size)
 
             if processes == 1:
                 S_row = E_row = '-'
