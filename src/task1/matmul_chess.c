@@ -19,6 +19,7 @@ void initialize_data(double *matrix, double *vector, int mat_size) {
 
 // Функция для проверки результата
 void print_matrix(const double *matrix, int mat_size) {
+    #ifdef VERBOSE
     for (int i = 0; i < mat_size; i++) {
         for (int j = 0; j < mat_size; j++) {
             printf("%6.2f ", matrix[i * mat_size + j]);
@@ -26,19 +27,22 @@ void print_matrix(const double *matrix, int mat_size) {
         printf("\n");
     }
     printf("\n");
+    #endif
 }
 
 void print_vector(const double *vector, int size) {
+    #ifdef VERBOSE
     for (int i = 0; i < size; i++) {
         printf("%6.2f ", vector[i]);
     }
     printf("\n");
+    #endif
 }
 
 void distr_vec(double *vector, double *local_vector, int rank, int nprocs, int n, int chunksize) {
     int grid_size = (int)sqrt(nprocs); // сетка процессоров
     int sendcounts[nprocs], displs[nprocs];
-    double temp_vec[chunksize];
+    double *temp_vec = (double *)malloc(chunksize * sizeof(double));
 
     if (rank == ROOT) {
         for (int p = 0; p < nprocs; ++p) {
@@ -57,12 +61,13 @@ void distr_vec(double *vector, double *local_vector, int rank, int nprocs, int n
     } else {
         MPI_Recv(local_vector, chunksize, MPI_DOUBLE, ROOT, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
+    free(temp_vec);
 }
 
 void distr_mat(double *matrix, double *local_matrix, int rank, int nprocs, int n, int chunksize) {
     int grid_size = (int)sqrt(nprocs); // сетка процессоров
     int local_size = chunksize * chunksize;
-    double temp_block[local_size];
+    double *temp_block = (double *)malloc(local_size * sizeof(double));
 
     if (rank == ROOT) {
         for (int i = 0; i < nprocs; i++) {
@@ -90,6 +95,7 @@ void distr_mat(double *matrix, double *local_matrix, int rank, int nprocs, int n
         // Получаем блок для текущего процесса
         MPI_Recv(local_matrix, local_size, MPI_DOUBLE, ROOT, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
+    free(temp_block);
 }
 
 void calc_loc_matmul(double *local_matrix, double *local_vector, double *local_result, int chunksize, int rank) {
@@ -110,8 +116,7 @@ void calc_loc_matmul(double *local_matrix, double *local_vector, double *local_r
 
 void calc_reduce_result(double *result, double *local_result, int rank, int nprocs, int n, int chunksize) {
     int grid_size = (int)sqrt(nprocs); // сетка процессоров
-
-    double partial_result[n];
+    double *partial_result = (double *)malloc(n * sizeof(double));
     for (int i = 0; i < n; ++i) {
         partial_result[i] = 0;
     }
@@ -129,6 +134,8 @@ void calc_reduce_result(double *result, double *local_result, int rank, int npro
     }
     printf("\n");
     #endif
+
+    free(partial_result);
 }
 
 int main(int argc, char **argv) {
@@ -228,6 +235,7 @@ int main(int argc, char **argv) {
 
     // Освобождение памяти
     free(local_matrix);
+    free(local_vector);
     free(local_result);
     if (rank == ROOT) {
         free(matrix);
