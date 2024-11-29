@@ -218,8 +218,10 @@ int main(int argc, char **argv) {
 
     // Вывод результата
     if (rank == ROOT) {
+        #ifdef VERBOSE
         printf("Result:\n");
         print_vector(result, mat_size);
+        #endif
 
         printf("Execution time: %f seconds\n", end_time - start_time);
     }
