@@ -1,16 +1,16 @@
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 
-int* init_matrix(long size);
+int *init_matrix(long size);
 int compare_results(int n, int *result1, int *result2);
 void seq_matmul(int n, int *matrix, int *vector, int *result);
 void print_vector(int *vector, int n);
 void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, int n);
 void gather_mat(int *matrix, int *local_matrix, int rank, int nprocs, int n);
-void calc_matmul(int *local_matrix, int *local_vector, int *local_result, int rows_per_proc, int n);
- 
+void calc_matmul(int *local_matrix, int *local_vector, int *local_result,
+                 int rows_per_proc, int n);
 
 int main(int argc, char *argv[]) {
     int rank, nprocs;
@@ -22,24 +22,27 @@ int main(int argc, char *argv[]) {
 
     if (argc != 2) {
         if (rank == 0) {
-            printf("Usage: mpirun -n <nodecount> ./program_name <matrix_size>\n");
+            printf(
+                "Usage: mpirun -n <nodecount> ./program_name <matrix_size>\n");
         }
         MPI_Finalize();
         return 1;
     }
-    n = atol(argv[1]);    
+    n = atol(argv[1]);
     if (n < nprocs) {
         if (rank == 0) {
-            printf("Matrix size must be greater than the number of processes.\n");
+            printf(
+                "Matrix size must be greater than the number of processes.\n");
         }
         MPI_Finalize();
         return 1;
-    }    
+    }
 
     int *matrix = NULL;
     int *vector = (int *)malloc(n * sizeof(int));
     int *resultvector = (rank == 0) ? (int *)malloc(n * sizeof(int)) : NULL;
-    int *sequential_result = (rank == 0) ? (int *)malloc(n * sizeof(int)) : NULL;
+    int *sequential_result =
+        (rank == 0) ? (int *)malloc(n * sizeof(int)) : NULL;
 
     // Initialize matrix and vector on the root process
     if (rank == 0) {
@@ -51,21 +54,21 @@ int main(int argc, char *argv[]) {
         // Perform sequential multiplication for correctness checking
         seq_matmul(n, matrix, vector, sequential_result);
     }
-    
+
     int rows_per_process = n / nprocs;
     int extra_rows = n % nprocs;
     int local_rows = rows_per_process + (rank < extra_rows ? 1 : 0);
 
     double start, end;
-    
-    start = MPI_Wtime();  
+
+    start = MPI_Wtime();
 
     int *local_matrix = (int *)malloc(sizeof(int) * local_rows * n);
     int *local_result = (int *)malloc(local_rows * sizeof(int));
 
     distr_mat(matrix, local_matrix, rank, nprocs, n);
 
-    // Distribute the vector across all processes    
+    // Distribute the vector across all processes
     MPI_Bcast(vector, n, MPI_INT, 0, MPI_COMM_WORLD);
 
     calc_matmul(local_matrix, vector, local_result, local_rows, n);
@@ -75,10 +78,12 @@ int main(int argc, char *argv[]) {
     free(local_matrix);
     free(local_result);
 
-    end = MPI_Wtime();    
+    end = MPI_Wtime();
 
     if (rank == 0) {
         printf("Row-split time: %f seconds\n", end - start);
+
+#ifdef VERBOSE
         printf("Row-split result: ");
         print_vector(resultvector, n);
         if (compare_results(n, resultvector, sequential_result)) {
@@ -86,6 +91,7 @@ int main(int argc, char *argv[]) {
         } else {
             printf("Row-split multiplication is incorrect.\n");
         }
+#endif
     }
 
     MPI_Finalize();
@@ -93,7 +99,7 @@ int main(int argc, char *argv[]) {
 }
 
 // Initializes a matrix (1D array representation of 2D matrix)
-int* init_matrix(long size) {
+int *init_matrix(long size) {
     int *matrix = (int *)malloc(sizeof(int) * size * size);
     if (!matrix) {
         printf("Error allocating memory for the matrix!\n");
@@ -103,22 +109,22 @@ int* init_matrix(long size) {
 
     for (long i = 0; i < size; i++) {
         for (long j = 0; j < size; j++) {
-            matrix[i * size + j] = (int)(i + j + 1);  // Example: Fill with column indices
+            matrix[i * size + j] =
+                (int)(i + j + 1);  // Example: Fill with column indices
         }
     }
 
     return matrix;
 }
 
-
 // Проверка корректности результатов
 int compare_results(int n, int *result1, int *result2) {
     for (int i = 0; i < n; i++) {
         if (result1[i] != result2[i]) {
-            return 0; // Результаты отличаются
+            return 0;  // Результаты отличаются
         }
     }
-    return 1; // Результаты совпадают
+    return 1;  // Результаты совпадают
 }
 
 // Последовательное умножение матрицы на вектор
@@ -141,7 +147,7 @@ void print_vector(int *vector, int n) {
 // Distribute the matrix rows using MPI_Scatterv
 void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, int n) {
     int *sendcounts = NULL, *displs = NULL;
-    int rows_per_proc = n / nprocs;        
+    int rows_per_proc = n / nprocs;
     int extra_rows = n % nprocs;
     int local_rows = rows_per_proc + (rank < extra_rows ? 1 : 0);
 
@@ -151,12 +157,13 @@ void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, int n) {
 
         for (int i = 0; i < nprocs; i++) {
             sendcounts[i] = (rows_per_proc + (i < extra_rows ? 1 : 0)) * n;
-            displs[i] = (i * rows_per_proc + (i < extra_rows ? i : extra_rows)) * n;
+            displs[i] =
+                (i * rows_per_proc + (i < extra_rows ? i : extra_rows)) * n;
         }
     }
 
-    MPI_Scatterv(matrix, sendcounts, displs, MPI_INT,
-                 local_matrix, local_rows * n, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(matrix, sendcounts, displs, MPI_INT, local_matrix,
+                 local_rows * n, MPI_INT, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
         free(sendcounts);
@@ -165,9 +172,10 @@ void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, int n) {
 }
 
 // Distribute the matrix rows using MPI_Scatterv
-void gather_mat(int *resultvector, int *local_result, int rank, int nprocs, int n) {
+void gather_mat(int *resultvector, int *local_result, int rank, int nprocs,
+                int n) {
     int *recv_counts = NULL, *recv_displs = NULL;
-    int rows_per_proc = n / nprocs;        
+    int rows_per_proc = n / nprocs;
     int extra_rows = n % nprocs;
     int local_rows = rows_per_proc + (rank < extra_rows ? 1 : 0);
 
@@ -177,11 +185,13 @@ void gather_mat(int *resultvector, int *local_result, int rank, int nprocs, int 
 
         for (int i = 0; i < nprocs; i++) {
             recv_counts[i] = (rows_per_proc + (i < extra_rows ? 1 : 0));
-            recv_displs[i] = (i * rows_per_proc + (i < extra_rows ? i : extra_rows));
+            recv_displs[i] =
+                (i * rows_per_proc + (i < extra_rows ? i : extra_rows));
         }
     }
 
-    MPI_Gatherv(local_result, local_rows, MPI_INT, resultvector, recv_counts, recv_displs, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(local_result, local_rows, MPI_INT, resultvector, recv_counts,
+                recv_displs, MPI_INT, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
         free(recv_counts);
@@ -190,7 +200,8 @@ void gather_mat(int *resultvector, int *local_result, int rank, int nprocs, int 
 }
 
 // Perform row-wise matrix-vector multiplication
-void calc_matmul(int *local_matrix, int *local_vector, int *local_result, int rows_per_proc, int n) {
+void calc_matmul(int *local_matrix, int *local_vector, int *local_result,
+                 int rows_per_proc, int n) {
     for (int i = 0; i < rows_per_proc; i++) {
         local_result[i] = 0;
         for (long j = 0; j < n; j++) {

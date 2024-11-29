@@ -9,11 +9,13 @@ ROOT_DIR = os.path.abspath('..')
 def run_mpi_program(num_processes):
     result = {}
     try:
-        output = subprocess.run(
-            ["mpirun", "--use-hwthread-cpus", "-np", str(num_processes), ROOT_DIR + "/src/task1/matmul.o"],
-            capture_output=True, text=True
-        )
-        lines = output.stdout.splitlines()
+        lines = []
+        for prog_name in ["matmul_row.o", "matmul_col.o", "matmul_chess.o"]:
+            output = subprocess.run(
+                ["mpirun", "--use-hwthread-cpus", "-np", str(num_processes), ROOT_DIR + "/src/task1/" + prog_name],
+                capture_output=True, text=True
+            )
+            lines += output.stdout.splitlines()
 
         split_func = lambda x: x.split("time: ")[1].replace(' seconds', '')
 
@@ -85,8 +87,8 @@ def plot_matrix_performance(data, save_path):
     plt.close()
 
 def main() -> None:
-    matrix_sizes = [512, 2048, 4096]
-    num_processes = list(range(1, 10+1))
+    matrix_sizes = [576, 2304, 4608]
+    num_processes = [1, 4, 9]
 
     os.makedirs(f'{ROOT_DIR}/src/task1/task_1_benchmark', exist_ok=True)
     for size in matrix_sizes:

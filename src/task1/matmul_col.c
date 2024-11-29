@@ -1,16 +1,20 @@
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 
-int* init_matrix(long size);
-int* init_vector(long size, int value);
+int *init_matrix(long size);
+int *init_vector(long size, int value);
 int compare_results(int n, int *result1, int *result2);
 void seq_matmul(int n, int *matrix, int *vector, int *result);
 void print_vector(int *vector, int n);
-void distr_vector(int *vector, int *local_vector, int rank, int nprocs, long n, long chunksize);
-void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, long n, long chunksize);
-void calc_reduce_scatter(int *local_matrix, int *local_vector, int *resultvector, int rank, int nprocs, long n, long chunksize);
+void distr_vector(int *vector, int *local_vector, int rank, int nprocs, long n,
+                  long chunksize);
+void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, long n,
+               long chunksize);
+void calc_reduce_scatter(int *local_matrix, int *local_vector,
+                         int *resultvector, int rank, int nprocs, long n,
+                         long chunksize);
 
 int main(int argc, char *argv[]) {
     int rank, nprocs;
@@ -26,7 +30,8 @@ int main(int argc, char *argv[]) {
 
     if (argc != 2) {
         if (rank == 0) {
-            printf("Usage: mpirun -n <nodecount> ./program_name <matrix_size>\n");
+            printf(
+                "Usage: mpirun -n <nodecount> ./program_name <matrix_size>\n");
         }
         MPI_Finalize();
         return 1;
@@ -35,7 +40,8 @@ int main(int argc, char *argv[]) {
     n = atol(argv[1]);
     if (n < nprocs) {
         if (rank == 0) {
-            printf("Matrix size must be greater than the number of processes.\n");
+            printf(
+                "Matrix size must be greater than the number of processes.\n");
         }
         MPI_Finalize();
         return 1;
@@ -48,7 +54,6 @@ int main(int argc, char *argv[]) {
         matrix = init_matrix(n);
         vector = init_vector(n, 1);  // Example vector filled with 1
 
-        
         // Выполняем последовательное умножение для проверки
         seq_matmul(n, matrix, vector, sequential_result);
     }
@@ -57,7 +62,9 @@ int main(int argc, char *argv[]) {
 
     columncount = n - ((n / nprocs) * (nprocs - 1));
     chunksize = (rank == nprocs - 1) ? columncount : (n / nprocs);
-    columncount = (columncount > chunksize) ? columncount : chunksize;  // Ensure maximum column count
+    columncount = (columncount > chunksize)
+                      ? columncount
+                      : chunksize;  // Ensure maximum column count
 
     local_matrix = (int *)malloc(sizeof(int) * n * columncount);
     local_vector = (int *)malloc(sizeof(int) * chunksize);
@@ -74,19 +81,23 @@ int main(int argc, char *argv[]) {
     distr_mat(matrix, local_matrix, rank, nprocs, n, chunksize);
 
     // Perform the matrix-vector multiplication and gather the result
-    calc_reduce_scatter(local_matrix, local_vector, resultvector, rank, nprocs, n, chunksize);
+    calc_reduce_scatter(local_matrix, local_vector, resultvector, rank, nprocs,
+                        n, chunksize);
 
     end = MPI_Wtime();
     // Print results on the root process
     if (rank == 0) {
-        printf("Row-split time: %f seconds\n", end - start);
-        printf("Row-split result: ");
+        printf("Column-split time time: %f seconds\n", end - start);
+
+#ifdef VERBOSE
+        printf("Column-split time result: ");
         print_vector(resultvector, n);
         if (compare_results(n, resultvector, sequential_result)) {
-            printf("Row-split multiplication is correct.\n");
+            printf("Column-split time multiplication is correct.\n");
         } else {
-            printf("Row-split multiplication is incorrect.\n");
+            printf("Column-split time multiplication is incorrect.\n");
         }
+#endif
     }
 
     // Clean up and free memory
@@ -103,7 +114,7 @@ int main(int argc, char *argv[]) {
 }
 
 // Initializes a matrix (1D array representation of 2D matrix)
-int* init_matrix(long size) {
+int *init_matrix(long size) {
     int *matrix = (int *)malloc(sizeof(int) * size * size);
     if (!matrix) {
         printf("Error allocating memory for the matrix!\n");
@@ -113,7 +124,8 @@ int* init_matrix(long size) {
 
     for (long i = 0; i < size; i++) {
         for (long j = 0; j < size; j++) {
-            matrix[i * size + j] = (int)(i + j + 1);  // Example: Fill with column indices
+            matrix[i * size + j] =
+                (int)(i + j + 1);  // Example: Fill with column indices
         }
     }
 
@@ -121,7 +133,7 @@ int* init_matrix(long size) {
 }
 
 // Initializes a vector
-int* init_vector(long size, int value) {
+int *init_vector(long size, int value) {
     int *vector = (int *)malloc(sizeof(int) * size);
     if (!vector) {
         printf("Error allocating memory for the vector!\n");
@@ -136,15 +148,14 @@ int* init_vector(long size, int value) {
     return vector;
 }
 
-
 // Проверка корректности результатов
 int compare_results(int n, int *result1, int *result2) {
     for (int i = 0; i < n; i++) {
         if (result1[i] != result2[i]) {
-            return 0; // Результаты отличаются
+            return 0;  // Результаты отличаются
         }
     }
-    return 1; // Результаты совпадают
+    return 1;  // Результаты совпадают
 }
 
 // Последовательное умножение матрицы на вектор
@@ -165,7 +176,8 @@ void print_vector(int *vector, int n) {
 }
 
 // Distribute the matrix using MPI_Scatterv
-void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, long n, long chunksize) {
+void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, long n,
+               long chunksize) {
     int sendcounts[nprocs], displs[nprocs];
     MPI_Datatype MPI_coltype, MPI_resized_coltype;
 
@@ -181,14 +193,15 @@ void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, long n, lon
         displs[i] = i * chunk;
     }
 
-    MPI_Scatterv(matrix, sendcounts, displs, MPI_resized_coltype,
-                 local_matrix, chunksize * n, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(matrix, sendcounts, displs, MPI_resized_coltype, local_matrix,
+                 chunksize * n, MPI_INT, 0, MPI_COMM_WORLD);
 
     MPI_Type_free(&MPI_resized_coltype);
 }
 
 // Distribute the vector using MPI_Scatterv
-void distr_vector(int *vector, int *local_vector, int rank, int nprocs, long n, long chunksize) {
+void distr_vector(int *vector, int *local_vector, int rank, int nprocs, long n,
+                  long chunksize) {
     int sendcounts[nprocs], displs[nprocs];
     int chunk = n / nprocs;
     int lastchunk = n - (chunk * (nprocs - 1));
@@ -198,12 +211,14 @@ void distr_vector(int *vector, int *local_vector, int rank, int nprocs, long n, 
         displs[i] = i * chunk;
     }
 
-    MPI_Scatterv(vector, sendcounts, displs, MPI_INT,
-                 local_vector, chunksize, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(vector, sendcounts, displs, MPI_INT, local_vector, chunksize,
+                 MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 // Perform matrix-vector multiplication and reduce scatter
-void calc_reduce_scatter(int *local_matrix, int *local_vector, int *resultvector, int rank, int nprocs, long n, long chunksize) {
+void calc_reduce_scatter(int *local_matrix, int *local_vector,
+                         int *resultvector, int rank, int nprocs, long n,
+                         long chunksize) {
     int *intermediate_result = init_vector(n, 0);
     int recvcounts[nprocs];
 
@@ -217,7 +232,8 @@ void calc_reduce_scatter(int *local_matrix, int *local_vector, int *resultvector
         }
     }
 
-    MPI_Reduce_scatter(intermediate_result, resultvector, recvcounts, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Reduce_scatter(intermediate_result, resultvector, recvcounts, MPI_INT,
+                       MPI_SUM, MPI_COMM_WORLD);
 
     free(intermediate_result);
 }
