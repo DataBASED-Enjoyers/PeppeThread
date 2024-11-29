@@ -49,14 +49,12 @@ int main(int argc, char *argv[]) {
         rows_per_proc += n % nprocs; // Add remainder to the last process
     }
 
-
     sequential_result = init_vector(n, 1);
 
     // Initialize matrix and vector on the root process
     if (rank == 0) {
         matrix = init_matrix(n);
         vector = init_vector(n, 1);  // Example vector filled with 1
-
         
         // Выполняем последовательное умножение для проверки
         seq_matmul(n, matrix, vector, sequential_result);
@@ -200,6 +198,7 @@ void row_split_multiplication(int rank, int size, int n, int *matrix,
             recv_displs[i] = i * rows_per_process + (i < extra_rows ? i : extra_rows);
         }
     }
+
 
     MPI_Gatherv(local_result, local_rows, MPI_INT, result, recv_counts, recv_displs, MPI_INT, 0, MPI_COMM_WORLD);
 
