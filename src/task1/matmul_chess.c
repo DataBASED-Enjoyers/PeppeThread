@@ -158,19 +158,16 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    int mat_size;
-    int num_of_blocks_by_dim = (int)sqrt(size);
-    int block_size = mat_size / num_of_blocks_by_dim;
-
     if (argc != 2) {
         if (rank == 0) {
-            printf(
-                "Usage: mpirun -n <nodecount> ./program_name <matrix_size>\n");
+            printf("Usage: mpirun -n <nodecount> ./program_name <matrix_size>\n");
         }
         MPI_Finalize();
         return 1;
     }
-    mat_size = atoi(argv[1]);
+    int mat_size = atoi(argv[1]);
+    int num_of_blocks_by_dim = (int)sqrt(size);
+    int block_size = mat_size / num_of_blocks_by_dim;
 
     // Проверка на совместимость размера матрицы и числа процессов
     if (mat_size % size != 0) {
@@ -195,8 +192,7 @@ int main(int argc, char **argv) {
 
     // Выделяем память для локальных и глобальных данных
     double *matrix = NULL, *vector = NULL, *result = NULL;
-    double *local_matrix =
-        (double *)malloc(block_size * block_size * sizeof(double));
+    double *local_matrix = (double *)malloc(block_size * block_size * sizeof(double));
     double *local_result = (double *)malloc(block_size * sizeof(double));
     double *local_vector = (double *)malloc(block_size * sizeof(double));
 
