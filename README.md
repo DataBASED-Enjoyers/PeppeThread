@@ -26,6 +26,7 @@ mpirun -np 4 src/task1/matmul_chess.o 576
 If you want to see debug info then build program with `-DVERBOSE` key.
 
 Example:
+
 ```bash
 mpic++ src/task1/matmul_row.c -o src/task1/matmul_row.o -DVERBOSE
 ```
@@ -52,5 +53,5 @@ mpirun -np 4 path_to_object.o
 cd utils
 python3 -m venv .venv
 source .venv/bin/activate
-pip3 install numpy pandas matplotlib
+pip install -r requirements.txt
 ```

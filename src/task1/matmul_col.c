@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     end = MPI_Wtime();
     // Print results on the root process
     if (rank == 0) {
-        printf("Column-split time time: %f seconds\n", end - start);
+        printf("Column-split time: %f seconds\n", end - start);
 
 #ifdef VERBOSE
         printf("Column-split time result: ");

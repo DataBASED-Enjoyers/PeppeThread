@@ -160,7 +160,8 @@ int main(int argc, char **argv) {
 
     if (argc != 2) {
         if (rank == 0) {
-            printf("Usage: mpirun -n <nodecount> ./program_name <matrix_size>\n");
+            printf(
+                "Usage: mpirun -n <nodecount> ./program_name <matrix_size>\n");
         }
         MPI_Finalize();
         return 1;
@@ -192,7 +193,8 @@ int main(int argc, char **argv) {
 
     // Выделяем память для локальных и глобальных данных
     double *matrix = NULL, *vector = NULL, *result = NULL;
-    double *local_matrix = (double *)malloc(block_size * block_size * sizeof(double));
+    double *local_matrix =
+        (double *)malloc(block_size * block_size * sizeof(double));
     double *local_result = (double *)malloc(block_size * sizeof(double));
     double *local_vector = (double *)malloc(block_size * sizeof(double));
 

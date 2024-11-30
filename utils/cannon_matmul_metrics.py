@@ -62,7 +62,7 @@ def plot_matrix_performance(data, save_path):
 
 
 def main() -> None:
-    matrix_sizes = [x for x in range(500, 3_000) if x % 4 == 0 and x % 9 == 0][::10]
+    matrix_sizes = [x for x in range(500, 3_000) if x % 4 == 0 and x % 9 == 0][::20]
     num_processes = [1, 4, 9]
 
     os.makedirs(f'{ROOT_DIR}/src/task2/task_2_benchmark', exist_ok=True)
