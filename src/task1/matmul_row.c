@@ -61,11 +61,12 @@ int main(int argc, char *argv[]) {
 
     double start, end;
 
-    start = MPI_Wtime();
-
     int *local_matrix = (int *)malloc(sizeof(int) * local_rows * n);
     int *local_result = (int *)malloc(local_rows * sizeof(int));
+    
+    start = MPI_Wtime();  
 
+    // Distribute the matrix across all processes   
     distr_mat(matrix, local_matrix, rank, nprocs, n);
 
     // Distribute the vector across all processes
@@ -75,10 +76,10 @@ int main(int argc, char *argv[]) {
 
     gather_mat(resultvector, local_result, rank, nprocs, n);
 
+    end = MPI_Wtime();    
+
     free(local_matrix);
     free(local_result);
-
-    end = MPI_Wtime();
 
     if (rank == 0) {
         printf("Row-split time: %f seconds\n", end - start);
