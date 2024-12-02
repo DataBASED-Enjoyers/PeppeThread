@@ -67,9 +67,9 @@ def plot_matrix_performance(data, save_path):
     ax1.plot(p_list, s_row_list, marker='o', label='S_row')
     ax1.plot(p_list, s_col_list, marker='o', label='S_col')
     ax1.plot(p_list, s_block_list, marker='o', label='S_block')
-    ax1.set_title(f'Скорость обработки матрицы {n}x{n}')
+    ax1.set_title(f'Ускорение обработки матрицы {n}x{n}')
     ax1.set_xlabel('Количество процессов')
-    ax1.set_ylabel('Скорость')
+    ax1.set_ylabel('Ускорение')
     ax1.legend()
     ax1.grid()
     
@@ -89,6 +89,7 @@ def plot_matrix_performance(data, save_path):
 def main() -> None:
     matrix_sizes = [576, 2304, 3636]
     num_processes = [1, 4, 9]
+    num_of_tries = 25
 
     os.makedirs(f'{ROOT_DIR}/src/task1/task_1_benchmark', exist_ok=True)
     for size in matrix_sizes:
@@ -108,7 +109,12 @@ def main() -> None:
                 'Разбиение на блоки (S, E)']
         )
         for processes in tqdm.tqdm(num_processes, desc=f'[Size={size}]'):
-            result = run_mpi_program(processes, size)
+            results = [run_mpi_program(processes, size) for _ in range(num_of_tries)]
+            result = {
+                'row_split': sum([res['row_split'] for res in results]) / num_of_tries,
+                'col_split': sum([res['col_split'] for res in results]) / num_of_tries,
+                'block_split': sum([res['block_split'] for res in results]) / num_of_tries,
+            }
 
             if processes == 1:
                 S_row = E_row = '-'

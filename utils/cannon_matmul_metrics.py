@@ -64,6 +64,7 @@ def plot_matrix_performance(data, save_path):
 def main() -> None:
     matrix_sizes = [x for x in range(500, 3_000) if x % 4 == 0 and x % 9 == 0][::20]
     num_processes = [1, 4, 9]
+    num_of_tries = 25
 
     os.makedirs(f'{ROOT_DIR}/src/task2/task_2_benchmark', exist_ok=True)
     for size in matrix_sizes:
@@ -80,7 +81,9 @@ def main() -> None:
                 '**E**']
         )
         for processes in tqdm.tqdm(num_processes, desc=f'[Size={os.environ.get("MAT_SIZE")}]'):
-            result = run_mpi_program(processes)
+            results = [run_mpi_program(processes) for _ in range(num_of_tries)]
+            result = sum(results) / num_of_tries
+
             if processes == 1:
                 S = '-'
                 E = '-'
