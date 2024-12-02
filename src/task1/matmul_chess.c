@@ -5,6 +5,7 @@
 #include <time.h>
 
 #define ROOT 0
+#define VERBOSE 1
 
 // Функция для инициализации матрицы и вектора случайными числами
 void initialize_data(double *matrix, double *vector, int mat_size) {
@@ -40,70 +41,61 @@ void print_vector(const double *vector, int size) {
 
 void distr_vec(double *vector, double *local_vector, int rank, int nprocs,
                int n, int chunksize) {
-    int grid_size = (int)sqrt(nprocs);  // сетка процессоров
-    int sendcounts[nprocs], displs[nprocs];
-    double *temp_vec = (double *)malloc(chunksize * sizeof(double));
+    int *sendcounts = NULL;
+    int *displs = NULL;
 
     if (rank == ROOT) {
+        sendcounts = (int *)malloc(nprocs * sizeof(int));
+        displs = (int *)malloc(nprocs * sizeof(int));
+
         for (int p = 0; p < nprocs; ++p) {
-            int shift = (p % grid_size) * chunksize;
-
-            for (int i = 0; i < chunksize; ++i) {
-                temp_vec[i] = vector[shift + i];
-            }
-
-            if (p == ROOT) {
-                memcpy(local_vector, temp_vec, chunksize * sizeof(double));
-            } else {
-                MPI_Send(temp_vec, chunksize, MPI_DOUBLE, p, 0, MPI_COMM_WORLD);
-            }
+            sendcounts[p] = chunksize;   // Each process gets `chunksize` elements
+            displs[p] = (p % (int)sqrt(nprocs)) * chunksize;  // Displacement in the global vector
         }
-    } else {
-        MPI_Recv(local_vector, chunksize, MPI_DOUBLE, ROOT, 0, MPI_COMM_WORLD,
-                 MPI_STATUS_IGNORE);
     }
-    free(temp_vec);
+
+    // Scatter the vector chunks to all processes
+    MPI_Scatterv(vector, sendcounts, displs, MPI_DOUBLE, local_vector,
+                 chunksize, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
+
+    if (rank == ROOT) {
+        free(sendcounts);
+        free(displs);
+    }
 }
+
 
 void distr_mat(double *matrix, double *local_matrix, int rank, int nprocs,
                int n, int chunksize) {
     int grid_size = (int)sqrt(nprocs);  // сетка процессоров
     int local_size = chunksize * chunksize;
-    double *temp_block = (double *)malloc(local_size * sizeof(double));
+    int *sendcounts = NULL;  // Array for the number of elements each process gets
+    int *displs = NULL;      // Array for displacements in the global matrix
 
     if (rank == ROOT) {
+        sendcounts = (int *)malloc(nprocs * sizeof(int));
+        displs = (int *)malloc(nprocs * sizeof(int));
+
         for (int i = 0; i < nprocs; i++) {
-            int start_row =
-                (i / grid_size) * chunksize;  // Начальная строка блока
-            int start_col =
-                (i % grid_size) * chunksize;  // Начальный столбец блока
+            sendcounts[i] = local_size;  // Each process gets chunksize x chunksize elements
 
-            // Заполняем временный блок для процесса
-            for (int row = 0; row < chunksize; row++) {
-                for (int col = 0; col < chunksize; col++) {
-                    int global_row = start_row + row;
-                    int global_col = start_col + col;
-                    temp_block[row * chunksize + col] =
-                        matrix[global_row * n + global_col];
-                }
-            }
-
-            if (i == ROOT) {
-                // Копируем блок ROOT-процесса в его локальную матрицу
-                memcpy(local_matrix, temp_block, local_size * sizeof(double));
-            } else {
-                // Отправляем блок остальным процессам
-                MPI_Send(temp_block, local_size, MPI_DOUBLE, i, 0,
-                         MPI_COMM_WORLD);
-            }
+            // Calculate displacement for the start of each block
+            int start_row = (i / grid_size) * chunksize;
+            int start_col = (i % grid_size) * chunksize;
+            displs[i] = start_row * n + start_col;
         }
-    } else {
-        // Получаем блок для текущего процесса
-        MPI_Recv(local_matrix, local_size, MPI_DOUBLE, ROOT, 0, MPI_COMM_WORLD,
-                 MPI_STATUS_IGNORE);
     }
-    free(temp_block);
+
+    // Scatter the matrix blocks to all processes
+    MPI_Scatterv(matrix, sendcounts, displs, MPI_DOUBLE, local_matrix,
+                 local_size, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
+
+    if (rank == ROOT) {
+        free(sendcounts);
+        free(displs);
+    }
 }
+
 
 void calc_loc_matmul(double *local_matrix, double *local_vector,
                      double *local_result, int chunksize, int rank) {
