@@ -5,7 +5,6 @@
 #include <time.h>
 
 #define ROOT 0
-#define VERBOSE 1
 
 // Функция для инициализации матрицы и вектора случайными числами
 void initialize_data(double *matrix, double *vector, int mat_size) {

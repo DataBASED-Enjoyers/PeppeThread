@@ -42,9 +42,9 @@ def plot_matrix_performance(data, save_path):
     
     ax1.plot(p_list, s_list, marker='o', label='S')
     ax1.set_xticks(p_list)
-    ax1.set_title(f'Скорость обработки матрицы {n}x{n}')
+    ax1.set_title(f'Ускорение обработки матрицы {n}x{n}')
     ax1.set_xlabel('Количество процессов')
-    ax1.set_ylabel('Скорость')
+    ax1.set_ylabel('Ускорение')
     ax1.legend()
     ax1.grid()
     
