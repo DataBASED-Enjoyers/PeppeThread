@@ -5,13 +5,13 @@ import tqdm
 from markdown_table import MarkdownTable
 import numpy as np
 
-ROOT_DIR = os.path.abspath('..')
+ROOT_DIR = os.path.abspath('.')
 
 def run_mpi_program(num_processes, matrix_size, num_runs=100):
     result = {"row_split": [], "col_split": [], "block_split": []}
     
     try:
-        for _ in range(num_runs):
+        for _ in tqdm.trange(num_runs):
             for prog_name in ["matmul_row.o", "matmul_col.o", "matmul_chess.o"]:
                 output = subprocess.run(
                     ["mpirun", "-np", str(num_processes), ROOT_DIR + "/src/task1/" + prog_name, str(matrix_size)],
@@ -30,11 +30,10 @@ def run_mpi_program(num_processes, matrix_size, num_runs=100):
     except Exception as e:
         print(f"Error running MPI program with {num_processes} processes: {e}")
 
-    # Calculate average timings for each split
     return {
-        "row_split": np.mean(result["row_split"]) if result["row_split"] else float('inf'),
-        "col_split": np.mean(result["col_split"]) if result["col_split"] else float('inf'),
-        "block_split": np.mean(result["block_split"]) if result["block_split"] else float('inf')
+        "row_split": np.mean(result["row_split"]).item() if result["row_split"] else float('inf'),
+        "col_split": np.mean(result["col_split"]).item() if result["col_split"] else float('inf'),
+        "block_split": np.mean(result["block_split"]).item() if result["block_split"] else float('inf')
     }
 
 def get_S_E(t_1, t_n, n):
@@ -94,6 +93,7 @@ def plot_matrix_performance(data, save_path):
 def main() -> None:
     matrix_sizes = [576, 2304, 3636]
     num_processes = [1, 4, 9]
+    NUM_RUNS = 100
 
     os.makedirs(f'{ROOT_DIR}/src/task1/task_1_benchmark', exist_ok=True)
     for size in matrix_sizes:
@@ -112,7 +112,7 @@ def main() -> None:
                 'Разбиение на блоки (S, E)']
         )
         for processes in tqdm.tqdm(num_processes, desc=f'[Size={size}]'):
-            result = run_mpi_program(processes, size, num_runs=100)
+            result = run_mpi_program(processes, size, num_runs=NUM_RUNS)
 
             if processes == 1:
                 S_row = E_row = '-'

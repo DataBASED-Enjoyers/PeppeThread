@@ -4,7 +4,7 @@ import os
 import tqdm
 from markdown_table import MarkdownTable
 
-ROOT_DIR = os.path.abspath('..')
+ROOT_DIR = os.path.abspath('.')
 
 def run_mpi_program(num_processes):
     output = subprocess.run(
