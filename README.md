@@ -55,7 +55,7 @@ mpirun -np 4 src/task1/matmul_row.o 576
 
 Run program generating graph:
 ```bash
-python3 -m matmul_split_metrics
+python3 utils/matmul_split_metrics.py
 ```
 
 ---
@@ -79,7 +79,7 @@ mpirun -np 4 /src/task2/cannon_matmul.o
 
 Run program generating graph:
 ```bash
-python3 -m cannon_matmul_metrics
+python3 utils/cannon_matmul_metrics.py
 ```
 
 ---

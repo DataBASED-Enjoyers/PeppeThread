@@ -94,7 +94,6 @@ def plot_matrix_performance(data, save_path):
 def main() -> None:
     matrix_sizes = [576, 2304, 3636]
     num_processes = [1, 4, 9]
-    num_of_tries = 25
 
     os.makedirs(f'{ROOT_DIR}/src/task1/task_1_benchmark', exist_ok=True)
     for size in matrix_sizes:
