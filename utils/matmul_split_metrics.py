@@ -3,39 +3,44 @@ import matplotlib.pyplot as plt
 import os
 import tqdm
 from markdown_table import MarkdownTable
+import numpy as np
 
 ROOT_DIR = os.path.abspath('..')
 
-def run_mpi_program(num_processes, matrix_size):
-    result = {}
+def run_mpi_program(num_processes, matrix_size, num_runs=100):
+    result = {"row_split": [], "col_split": [], "block_split": []}
+    
     try:
-        lines = []
-        for prog_name in ["matmul_row.o", "matmul_col.o", "matmul_chess.o"]:
-            output = subprocess.run(
-                ["mpirun", "-np", str(num_processes), ROOT_DIR + "/src/task1/" + prog_name, str(matrix_size)],
-                capture_output=True, text=True
-            )
-            lines += output.stdout.splitlines()
-
-        split_func = lambda x: x.split("time: ")[1].replace(' seconds', '')
-
-        for line in lines:
-            if "Row-split time" in line:
-                result["row_split"] = float(split_func(line))
-            elif "Column-split time" in line:
-                result["col_split"] = float(split_func(line))
-            elif "Block-split time" in line:
-                result["block_split"] = float(split_func(line))
+        for _ in range(num_runs):
+            for prog_name in ["matmul_row.o", "matmul_col.o", "matmul_chess.o"]:
+                output = subprocess.run(
+                    ["mpirun", "-np", str(num_processes), ROOT_DIR + "/src/task1/" + prog_name, str(matrix_size)],
+                    capture_output=True, text=True
+                )
+                lines = output.stdout.splitlines()
+                
+                for line in lines:
+                    if "Row-split time" in line:
+                        result["row_split"].append(float(line.split("time: ")[1].replace(' seconds', '')))
+                    elif "Column-split time" in line:
+                        result["col_split"].append(float(line.split("time: ")[1].replace(' seconds', '')))
+                    elif "Block-split time" in line:
+                        result["block_split"].append(float(line.split("time: ")[1].replace(' seconds', '')))
+    
     except Exception as e:
         print(f"Error running MPI program with {num_processes} processes: {e}")
 
-    return result
+    # Calculate average timings for each split
+    return {
+        "row_split": np.mean(result["row_split"]) if result["row_split"] else float('inf'),
+        "col_split": np.mean(result["col_split"]) if result["col_split"] else float('inf'),
+        "block_split": np.mean(result["block_split"]) if result["block_split"] else float('inf')
+    }
 
 def get_S_E(t_1, t_n, n):
-     S = round(t_1 / t_n, 4)
-     E = round(S / n, 4)
-     return S, E
-
+    S = round(t_1 / t_n, 4)
+    E = round(S / n, 4)
+    return S, E
 
 def plot_matrix_performance(data, save_path):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
@@ -94,7 +99,6 @@ def main() -> None:
     os.makedirs(f'{ROOT_DIR}/src/task1/task_1_benchmark', exist_ok=True)
     for size in matrix_sizes:
         data = []
-        # os.environ["MAT_SIZE"] = str(size)
         avg_time_row_1 = None
         avg_time_col_1 = None
         avg_time_block_1 = None
@@ -109,12 +113,7 @@ def main() -> None:
                 'Разбиение на блоки (S, E)']
         )
         for processes in tqdm.tqdm(num_processes, desc=f'[Size={size}]'):
-            results = [run_mpi_program(processes, size) for _ in range(num_of_tries)]
-            result = {
-                'row_split': sum([res['row_split'] for res in results]) / num_of_tries,
-                'col_split': sum([res['col_split'] for res in results]) / num_of_tries,
-                'block_split': sum([res['block_split'] for res in results]) / num_of_tries,
-            }
+            result = run_mpi_program(processes, size, num_runs=100)
 
             if processes == 1:
                 S_row = E_row = '-'
@@ -124,10 +123,10 @@ def main() -> None:
                 avg_time_col_1 = result['col_split']
                 avg_time_block_1 = result['block_split']
             else:
-                 S_row, E_row = get_S_E(avg_time_row_1, result['row_split'], processes)
-                 S_col, E_col = get_S_E(avg_time_col_1, result['col_split'], processes)
-                 S_block, E_block = get_S_E(avg_time_block_1, result['block_split'], processes)
-                 data.append([size, processes, (S_row, E_row), (S_col, E_col), (S_block, E_block)])
+                S_row, E_row = get_S_E(avg_time_row_1, result['row_split'], processes)
+                S_col, E_col = get_S_E(avg_time_col_1, result['col_split'], processes)
+                S_block, E_block = get_S_E(avg_time_block_1, result['block_split'], processes)
+                data.append([size, processes, (S_row, E_row), (S_col, E_col), (S_block, E_block)])
 
             table.add_row([
                 f"{size}x{size}", processes, 
@@ -135,8 +134,6 @@ def main() -> None:
         
         table.save_to_file(f'{ROOT_DIR}/src/task1/task_1_benchmark/size={size}/table.md')
         plot_matrix_performance(data, f'{ROOT_DIR}/src/task1/task_1_benchmark/size={size}/plot.png')
-        
-
 
 if __name__ == '__main__':
     main()
