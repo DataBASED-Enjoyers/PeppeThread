@@ -73,8 +73,8 @@ mpirun -np <num_of_threads> <path_to_compiled_file>
 Quick Start:
 ```bash
 export MAT_SIZE=500
-mpic++ /src/task2/cannon_matmul.c -o /src/task2/cannon_matmul.o
-mpirun -np 4 /src/task2/cannon_matmul.o
+mpic++ src/task2/cannon_matmul.c -o src/task2/cannon_matmul.o
+mpirun -np 4 src/task2/cannon_matmul.o
 ```
 
 Run program generating graph:

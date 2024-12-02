@@ -7,7 +7,6 @@ from markdown_table import MarkdownTable
 ROOT_DIR = os.path.abspath('..')
 
 def run_mpi_program(num_processes):
-    result = {}
     output = subprocess.run(
         ["mpirun", "-np", str(num_processes), ROOT_DIR + "/src/task2/cannon_matmul.o"],
         capture_output=True, text=True
@@ -64,7 +63,7 @@ def plot_matrix_performance(data, save_path):
 def main() -> None:
     matrix_sizes = [x for x in range(500, 3_000) if x % 4 == 0 and x % 9 == 0][::20]
     num_processes = [1, 4, 9]
-    num_of_tries = 25
+    num_of_tries = 100
 
     os.makedirs(f'{ROOT_DIR}/src/task2/task_2_benchmark', exist_ok=True)
     for size in matrix_sizes:
