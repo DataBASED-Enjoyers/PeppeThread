@@ -85,12 +85,13 @@ def main() -> None:
             result = sum(results) / num_of_tries
 
             if processes == 1:
-                S = '-'
-                E = '-'
+                S = 1
+                E = 1
                 avg_time = result
             else:
                  S, E = get_S_E(avg_time, result, processes)
-                 data.append([size, processes, S, E])
+            
+            data.append([size, processes, S, E])
 
             table.add_row([
                 f"{size}x{size}", processes, S, E])
@@ -98,7 +99,6 @@ def main() -> None:
         table.save_to_file(f'{ROOT_DIR}/src/task2/task_2_benchmark/size={size}/table.md')
         plot_matrix_performance(data, f'{ROOT_DIR}/src/task2/task_2_benchmark/size={size}/plot.png')
         
-
 
 if __name__ == '__main__':
     main()
