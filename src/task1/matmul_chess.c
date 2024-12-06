@@ -82,29 +82,40 @@ void distr_mat(double *matrix, double *local_matrix, int rank, int nprocs,
                int n, int chunksize) {
     int grid_size = (int)sqrt(nprocs);
     int local_size = chunksize * chunksize;
-    int *sendcounts = NULL;
-    int *displs = NULL;
+    double *temp_block = (double *)malloc(local_size * sizeof(double));
 
     if (rank == ROOT) {
-        sendcounts = (int *)malloc(nprocs * sizeof(int));
-        displs = (int *)malloc(nprocs * sizeof(int));
-
         for (int i = 0; i < nprocs; i++) {
-            sendcounts[i] = local_size;
+            int start_row =
+                (i / grid_size) * chunksize;  // Начальная строка блока
+            int start_col =
+                (i % grid_size) * chunksize;  // Начальный столбец блока
 
-            int start_row = (i / grid_size) * chunksize;
-            int start_col = (i % grid_size) * chunksize;
-            displs[i] = start_row * n + start_col;
+            // Заполняем временный блок для процесса
+            for (int row = 0; row < chunksize; row++) {
+                for (int col = 0; col < chunksize; col++) {
+                    int global_row = start_row + row;
+                    int global_col = start_col + col;
+                    temp_block[row * chunksize + col] =
+                        matrix[global_row * n + global_col];
+                }
+            }
+
+            if (i == ROOT) {
+                // Копируем блок ROOT-процесса в его локальную матрицу
+                memcpy(local_matrix, temp_block, local_size * sizeof(double));
+            } else {
+                // Отправляем блок остальным процессам
+                MPI_Send(temp_block, local_size, MPI_DOUBLE, i, 0,
+                         MPI_COMM_WORLD);
+            }
         }
+    } else {
+        // Получаем блок для текущего процесса
+        MPI_Recv(local_matrix, local_size, MPI_DOUBLE, ROOT, 0, MPI_COMM_WORLD,
+                 MPI_STATUS_IGNORE);
     }
-
-    MPI_Scatterv(matrix, sendcounts, displs, MPI_DOUBLE, local_matrix,
-                 local_size, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
-
-    if (rank == ROOT) {
-        free(sendcounts);
-        free(displs);
-    }
+    free(temp_block);
 }
 
 void calc_loc_matmul(double *local_matrix, double *local_vector,
@@ -130,6 +141,12 @@ void calc_reduce_result(double *result, double *local_result, int rank,
         partial_result[i + (int)(rank / grid_size) * chunksize] +=
             local_result[i];
     }
+
+#ifdef VERBOSE
+    printf("Process %d partial result: ", rank);
+    print_vector(partial_result, n);
+    printf("\n");
+#endif
 
     MPI_Reduce(partial_result, result, n, MPI_DOUBLE, MPI_SUM, ROOT,
                MPI_COMM_WORLD);
@@ -189,6 +206,11 @@ int main(int argc, char **argv) {
         s_result = (double *)malloc(mat_size * sizeof(double));
 
         initialize_data(matrix, vector, mat_size);
+#ifdef VERBOSE
+        printf("Original matrix:\n");
+        if (rank == ROOT)
+            print_matrix(matrix, mat_size);
+#endif
         seq_matmul(mat_size, matrix, vector, s_result);
     }
 
@@ -209,9 +231,9 @@ int main(int argc, char **argv) {
         printf("Matmul result:\n");
         print_vector(result, mat_size);
         if (compare_results(mat_size, result, s_result)) {
-            printf("Column-split time multiplication is correct.\n");
+            printf("Block-split time multiplication is correct.\n");
         } else {
-            printf("Column-split time multiplication is incorrect.\n");
+            printf("Block-split time multiplication is incorrect.\n");
         }
 #endif
     printf("Block-split time: %f seconds\n", end_time - start_time);
