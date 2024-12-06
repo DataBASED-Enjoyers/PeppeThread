@@ -60,9 +60,7 @@ int main(int argc, char *argv[]) {
 
     columncount = n - ((n / nprocs) * (nprocs - 1));
     chunksize = (rank == nprocs - 1) ? columncount : (n / nprocs);
-    columncount = (columncount > chunksize)
-                      ? columncount
-                      : chunksize;
+    columncount = (columncount > chunksize) ? columncount : chunksize;
 
     local_matrix = (int *)malloc(sizeof(int) * n * columncount);
     local_vector = (int *)malloc(sizeof(int) * chunksize);
@@ -115,8 +113,7 @@ int *init_matrix(long size) {
 
     for (long i = 0; i < size; i++) {
         for (long j = 0; j < size; j++) {
-            matrix[i * size + j] =
-                (int)(i + j + 1);
+            matrix[i * size + j] = (int)(i + j + 1);
         }
     }
 

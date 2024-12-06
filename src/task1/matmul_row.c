@@ -44,14 +44,12 @@ int main(int argc, char *argv[]) {
     int *sequential_result =
         (rank == 0) ? (int *)malloc(n * sizeof(int)) : NULL;
 
-    // Initialize matrix and vector on the root process
     if (rank == 0) {
         matrix = init_matrix(n);
         for (int i = 0; i < n; i++) {
-            vector[i] = 1;  // Заполняем вектор единицами
+            vector[i] = 1;
         }
 
-        // Perform sequential multiplication for correctness checking
         seq_matmul(n, matrix, vector, sequential_result);
     }
 
@@ -63,20 +61,16 @@ int main(int argc, char *argv[]) {
 
     int *local_matrix = (int *)malloc(sizeof(int) * local_rows * n);
     int *local_result = (int *)malloc(local_rows * sizeof(int));
-    
-    start = MPI_Wtime();  
 
-    // Distribute the matrix across all processes   
+    start = MPI_Wtime();
+
     distr_mat(matrix, local_matrix, rank, nprocs, n);
-
-    // Distribute the vector across all processes
     MPI_Bcast(vector, n, MPI_INT, 0, MPI_COMM_WORLD);
-
     calc_matmul(local_matrix, vector, local_result, local_rows, n);
 
     gather_mat(resultvector, local_result, rank, nprocs, n);
 
-    end = MPI_Wtime();    
+    end = MPI_Wtime();
 
     free(local_matrix);
     free(local_result);
@@ -99,7 +93,6 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// Initializes a matrix (1D array representation of 2D matrix)
 int *init_matrix(long size) {
     int *matrix = (int *)malloc(sizeof(int) * size * size);
     if (!matrix) {
@@ -110,25 +103,22 @@ int *init_matrix(long size) {
 
     for (long i = 0; i < size; i++) {
         for (long j = 0; j < size; j++) {
-            matrix[i * size + j] =
-                (int)(i + j + 1);  // Example: Fill with column indices
+            matrix[i * size + j] = (int)(i + j + 1);
         }
     }
 
     return matrix;
 }
 
-// Проверка корректности результатов
 int compare_results(int n, int *result1, int *result2) {
     for (int i = 0; i < n; i++) {
         if (result1[i] != result2[i]) {
-            return 0;  // Результаты отличаются
+            return 0;
         }
     }
-    return 1;  // Результаты совпадают
+    return 1;
 }
 
-// Последовательное умножение матрицы на вектор
 void seq_matmul(int n, int *matrix, int *vector, int *result) {
     for (int i = 0; i < n; i++) {
         result[i] = 0;
@@ -145,7 +135,6 @@ void print_vector(int *vector, int n) {
     printf("\n");
 }
 
-// Distribute the matrix rows using MPI_Scatterv
 void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, int n) {
     int *sendcounts = NULL, *displs = NULL;
     int rows_per_proc = n / nprocs;
@@ -172,7 +161,6 @@ void distr_mat(int *matrix, int *local_matrix, int rank, int nprocs, int n) {
     }
 }
 
-// Distribute the matrix rows using MPI_Scatterv
 void gather_mat(int *resultvector, int *local_result, int rank, int nprocs,
                 int n) {
     int *recv_counts = NULL, *recv_displs = NULL;
@@ -200,7 +188,6 @@ void gather_mat(int *resultvector, int *local_result, int rank, int nprocs,
     }
 }
 
-// Perform row-wise matrix-vector multiplication
 void calc_matmul(int *local_matrix, int *local_vector, int *local_result,
                  int rows_per_proc, int n) {
     for (int i = 0; i < rows_per_proc; i++) {

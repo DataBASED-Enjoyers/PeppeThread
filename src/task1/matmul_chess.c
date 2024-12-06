@@ -86,12 +86,9 @@ void distr_mat(double *matrix, double *local_matrix, int rank, int nprocs,
 
     if (rank == ROOT) {
         for (int i = 0; i < nprocs; i++) {
-            int start_row =
-                (i / grid_size) * chunksize;  // Начальная строка блока
-            int start_col =
-                (i % grid_size) * chunksize;  // Начальный столбец блока
+            int start_row = (i / grid_size) * chunksize;
+            int start_col = (i % grid_size) * chunksize;
 
-            // Заполняем временный блок для процесса
             for (int row = 0; row < chunksize; row++) {
                 for (int col = 0; col < chunksize; col++) {
                     int global_row = start_row + row;
@@ -102,16 +99,13 @@ void distr_mat(double *matrix, double *local_matrix, int rank, int nprocs,
             }
 
             if (i == ROOT) {
-                // Копируем блок ROOT-процесса в его локальную матрицу
                 memcpy(local_matrix, temp_block, local_size * sizeof(double));
             } else {
-                // Отправляем блок остальным процессам
                 MPI_Send(temp_block, local_size, MPI_DOUBLE, i, 0,
                          MPI_COMM_WORLD);
             }
         }
     } else {
-        // Получаем блок для текущего процесса
         MPI_Recv(local_matrix, local_size, MPI_DOUBLE, ROOT, 0, MPI_COMM_WORLD,
                  MPI_STATUS_IGNORE);
     }
@@ -208,8 +202,7 @@ int main(int argc, char **argv) {
         initialize_data(matrix, vector, mat_size);
 #ifdef VERBOSE
         printf("Original matrix:\n");
-        if (rank == ROOT)
-            print_matrix(matrix, mat_size);
+        if (rank == ROOT) print_matrix(matrix, mat_size);
 #endif
         seq_matmul(mat_size, matrix, vector, s_result);
     }
@@ -236,7 +229,7 @@ int main(int argc, char **argv) {
             printf("Block-split time multiplication is incorrect.\n");
         }
 #endif
-    printf("Block-split time: %f seconds\n", end_time - start_time);
+        printf("Block-split time: %f seconds\n", end_time - start_time);
     }
 
     free(local_matrix);
