@@ -9,9 +9,8 @@ ROOT_DIR = os.path.abspath('.')
 
 def run_mpi_program(num_processes, matrix_size, num_runs=100):
     result = {"row_split": [], "col_split": [], "block_split": []}
-    
     try:
-        for _ in tqdm.trange(num_runs):
+        for _ in tqdm.trange(num_runs, desc=f'[Size={matrix_size} | Process={num_processes}]'):
             for prog_name in ["matmul_row.o", "matmul_col.o", "matmul_chess.o"]:
                 if prog_name == 'matmul_chess.o' and num_processes not in (1, 4, 9):
                     continue
@@ -67,7 +66,7 @@ def plot_matrix_performance(data, save_path):
         e_col_list.append(E_col)
 
         S_block, E_block = sublist[4]
-        if S_block != 0 and E_block != 0:
+        if S_block != '-' and E_block != '-':
             s_block_list.append(S_block)
             e_block_list.append(E_block)
     
@@ -97,8 +96,8 @@ def plot_matrix_performance(data, save_path):
 
 def main() -> None:
     matrix_sizes = [576, 2304, 3636]
-    num_processes = list(range(1, 10+1))
-    NUM_RUNS = 2
+    num_processes = list(range(1, 10))
+    NUM_RUNS = 100
 
     os.makedirs(f'{ROOT_DIR}/src/task1/task_1_benchmark', exist_ok=True)
     for size in matrix_sizes:
@@ -131,6 +130,9 @@ def main() -> None:
                 S_col, E_col = get_S_E(avg_time_col_1, result['col_split'], processes)
                 S_block, E_block = get_S_E(avg_time_block_1, result['block_split'], processes)
             
+            S_block = '-' if S_block == 0 else S_block
+            E_block = '-' if E_block == 0 else E_block
+
             data.append([size, processes, (S_row, E_row), (S_col, E_col), (S_block, E_block)])
 
             table.add_row([
