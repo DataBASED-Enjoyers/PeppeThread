@@ -7,26 +7,20 @@ find_package(MPI)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
 add_executable(
-    task_1_row
-    src/task1/matmul_row.c
+    task_1_general
+    src/task1/general.c
 )
 
 add_executable(
-    task_1_col
-    src/task1/matmul_col.c
-)
-
-add_executable(
-    task_1_chess
-    src/task1/matmul_chess.c
+    task_1_euler
+    src/task1/euler.c
 )
 
 add_executable(
     task_2
-    src/task2/cannon_matmul.c
+    src/task2/dirichle.c
 )
 
-target_link_libraries(task_1_row ${MPI_C_LIBRARIES})
-target_link_libraries(task_1_col ${MPI_C_LIBRARIES})
-target_link_libraries(task_1_chess ${MPI_C_LIBRARIES})
+target_link_libraries(task_1_general ${MPI_C_LIBRARIES})
+target_link_libraries(task_1_euler ${MPI_C_LIBRARIES})
 target_link_libraries(task_2 ${MPI_C_LIBRARIES})
