@@ -4,7 +4,7 @@
 #include <vector>
 
 #define G 6.67430e-11 // Гравитационная постоянная
-#define BLOCK_SIZE 512 // Размер блока CUDA
+#define BLOCK_SIZE 256 // Размер блока CUDA
 
 struct Body {
     double x, y;      // Координаты
@@ -52,10 +52,10 @@ __global__ void updateBodies(Body* bodies, double* Fx, double* Fy, int n, double
 
 int main(int argc, char* argv[]) {
     int n;
-    double dt = 1e-4;
-    int steps = 10000;
+    double dt = 1e-3;
+    int steps = 1e4;
 
-    std::ifstream input("input.txt");
+    std::ifstream input("src/task1/input.txt");
     input >> n;
 
     // Выделение памяти для тел
@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
     cudaMemcpy(h_bodies.data(), d_bodies, n * sizeof(Body), cudaMemcpyDeviceToHost);
 
     // Запись результатов в файл
-    std::ofstream output("output.csv");
+    std::ofstream output("src/task1/output.csv");
     for (int i = 0; i < n; i++) {
         output << h_bodies[i].x << "," << h_bodies[i].y << ",";
     }
