@@ -5,7 +5,6 @@
 #include <string>
 
 #define G 6.67430e-11 // Гравитационная постоянная
-#define BLOCK_SIZE 256 // Размер блока CUDA
 
 struct Body {
     double x, y;      // Координаты
@@ -57,6 +56,11 @@ int main(int argc, char* argv[]) {
     std::string output_filename = "src/task1/output.csv";
     std::string trajectory_filename = "src/task1/trajectory.csv";
 
+    int blockSize = 256; // дефолтный размер CUDA-блока
+    if (argc > 1) {
+        blockSize = atoi(argv[1]);
+    }
+
     // Читаем входные данные
     std::ifstream input(input_filename);
     input >> n;
@@ -73,7 +77,7 @@ int main(int argc, char* argv[]) {
     cudaMalloc(&d_Fy, n * sizeof(double));
     cudaMemcpy(d_bodies, h_bodies.data(), n * sizeof(Body), cudaMemcpyHostToDevice);
 
-    int gridSize = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int gridSize = (n + blockSize - 1) / blockSize;
 
     // Открываем файл для периодического вывода данных о траекториях
     // Формат: t, x_1, y_1, vx_1, vy_1, x_2, y_2, vx_2, vy_2, ...
@@ -98,8 +102,8 @@ int main(int argc, char* argv[]) {
 
     // Основной цикл времени
     for (int step = 1; step <= steps; step++) {
-        computeForces<<<gridSize, BLOCK_SIZE>>>(d_bodies, d_Fx, d_Fy, n);
-        updateBodies<<<gridSize, BLOCK_SIZE>>>(d_bodies, d_Fx, d_Fy, n, dt);
+        computeForces<<<gridSize, blockSize>>>(d_bodies, d_Fx, d_Fy, n);
+        updateBodies<<<gridSize, blockSize>>>(d_bodies, d_Fx, d_Fy, n, dt);
         cudaDeviceSynchronize();
 
         t = step * dt;
