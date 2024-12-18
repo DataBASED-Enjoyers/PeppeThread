@@ -1,26 +1,27 @@
-cmake_minimum_required(VERSION 3.5.0)
-project(PeppeThread VERSION 0.1.0 LANGUAGES C)
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -fopenmp")
+cmake_minimum_required(VERSION 3.18)
+project(CUDA_LAB LANGUAGES CXX CUDA)
 
-find_package(MPI)
-include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+set(CMAKE_CUDA_STANDARD 11)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 
-add_executable(
-    task_1_general
-    src/task1/general.c
+find_package(CUDA REQUIRED)
+find_package(MPI REQUIRED)
+
+add_executable(n_body_cuda
+    src/task1/n_body_cuda.cu
 )
 
-add_executable(
-    task_1_euler
-    src/task1/euler.c
+set_target_properties(n_body_cuda PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_ARCHITECTURES "61;75;86;89"          # 61 -- Pascal, 75 -- Turing, 86 -- Ampere, 89 -- Ada Lovelace
 )
 
-add_executable(
-    task_2
-    src/task2/dirichle.c
+set_target_properties(n_body_cuda PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED ON
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/task1
 )
 
-target_link_libraries(task_1_general ${MPI_C_LIBRARIES})
-target_link_libraries(task_1_euler ${MPI_C_LIBRARIES})
-target_link_libraries(task_2 ${MPI_C_LIBRARIES})
+target_include_directories(n_body_cuda PRIVATE ${MPI_INCLUDE_PATH})
+target_link_libraries(n_body_cuda PRIVATE MPI::MPI_CXX)

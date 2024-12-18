@@ -2,6 +2,7 @@
 #include <fstream>
 #include <cmath>
 #include <vector>
+#include <string>
 
 #define G 6.67430e-11 // Гравитационная постоянная
 #define BLOCK_SIZE 256 // Размер блока CUDA
@@ -11,7 +12,6 @@ struct Body {
     double vx, vy;    // Скорости
     double mass;      // Масса
 };
-
 
 __global__ void computeForces(Body* bodies, double* Fx, double* Fy, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -37,7 +37,6 @@ __global__ void computeForces(Body* bodies, double* Fx, double* Fy, int n) {
     Fy[i] = forceY;
 }
 
-// CUDA ядро для обновления позиций и скоростей методом Эйлера
 __global__ void updateBodies(Body* bodies, double* Fx, double* Fy, int n, double dt) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
@@ -49,16 +48,18 @@ __global__ void updateBodies(Body* bodies, double* Fx, double* Fy, int n, double
     bodies[i].y += bodies[i].vy * dt;
 }
 
-
 int main(int argc, char* argv[]) {
     int n;
     double dt = 1e-3;
-    int steps = 1e4;
+    int steps = 10000; // например, 10 тыс. шагов
 
-    std::ifstream input("src/task1/input.txt");
+    std::string input_filename = "src/task1/input.txt";
+    std::string output_filename = "src/task1/output.csv";
+    std::string trajectory_filename = "src/task1/trajectory.csv";
+
+    // Читаем входные данные
+    std::ifstream input(input_filename);
     input >> n;
-
-    // Выделение памяти для тел
     std::vector<Body> h_bodies(n);
     for (int i = 0; i < n; i++) {
         input >> h_bodies[i].x >> h_bodies[i].y >> h_bodies[i].vx >> h_bodies[i].vy >> h_bodies[i].mass;
@@ -67,29 +68,60 @@ int main(int argc, char* argv[]) {
 
     Body* d_bodies;
     double *d_Fx, *d_Fy;
-
-    // Выделение памяти на GPU
     cudaMalloc(&d_bodies, n * sizeof(Body));
     cudaMalloc(&d_Fx, n * sizeof(double));
     cudaMalloc(&d_Fy, n * sizeof(double));
-
-    // Копирование данных на GPU
     cudaMemcpy(d_bodies, h_bodies.data(), n * sizeof(Body), cudaMemcpyHostToDevice);
 
     int gridSize = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
+    // Открываем файл для периодического вывода данных о траекториях
+    // Формат: t, x_1, y_1, vx_1, vy_1, x_2, y_2, vx_2, vy_2, ...
+    std::ofstream traj_out(trajectory_filename);
+    // Записываем заголовок (опционально)
+    traj_out << "t";
+    for (int i = 0; i < n; i++) {
+        traj_out << ",x_" << i << ",y_" << i << ",vx_" << i << ",vy_" << i;
+    }
+    traj_out << "\n";
+
+    // Записываем начальное состояние при t=0
+    double t = 0.0;
+    traj_out << t;
+    for (int i = 0; i < n; i++) {
+        traj_out << "," << h_bodies[i].x << "," << h_bodies[i].y << "," << h_bodies[i].vx << "," << h_bodies[i].vy;
+    }
+    traj_out << "\n";
+
+    // Установим интервал вывода, например, каждые 100 шагов
+    int output_interval = 100;
+
     // Основной цикл времени
-    for (int step = 0; step < steps; step++) {
+    for (int step = 1; step <= steps; step++) {
         computeForces<<<gridSize, BLOCK_SIZE>>>(d_bodies, d_Fx, d_Fy, n);
         updateBodies<<<gridSize, BLOCK_SIZE>>>(d_bodies, d_Fx, d_Fy, n, dt);
         cudaDeviceSynchronize();
+
+        t = step * dt;
+
+        // Периодически копируем данные на хост и записываем их
+        if (step % output_interval == 0) {
+            cudaMemcpy(h_bodies.data(), d_bodies, n * sizeof(Body), cudaMemcpyDeviceToHost);
+            traj_out << t;
+            for (int i = 0; i < n; i++) {
+                traj_out << "," << h_bodies[i].x << "," << h_bodies[i].y << "," << h_bodies[i].vx << "," << h_bodies[i].vy;
+            }
+            traj_out << "\n";
+        }
     }
 
-    // Копирование результатов обратно на CPU
+    traj_out.close();
+
+    // Копируем конечные результаты и записываем их в отдельный файл (как было изначально)
     cudaMemcpy(h_bodies.data(), d_bodies, n * sizeof(Body), cudaMemcpyDeviceToHost);
 
-    // Запись результатов в файл
-    std::ofstream output("src/task1/output.csv");
+    std::ofstream output(output_filename);
+    // Финальный формат: x_1, y_1, x_2, y_2, ...
     for (int i = 0; i < n; i++) {
         output << h_bodies[i].x << "," << h_bodies[i].y << ",";
     }
