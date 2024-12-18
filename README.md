@@ -8,6 +8,10 @@
 
 ---
 
+## Preparations
+
+### CUDA Setup
+
 CUDA setup:
 
 * Check nvcc
@@ -25,6 +29,17 @@ export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export CUDACXX=/usr/local/cuda/bin/nvcc
 ```
 
+### Build project
+
+Build project target
+```bash
+mkdir build
+cd build
+cmake ..
+cmake --build .
+cd ..
+```
+
 ## Task 1
 
 [Task 1 Report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/lab2/src/task1/report_task_1.md)
@@ -34,21 +49,18 @@ export CUDACXX=/usr/local/cuda/bin/nvcc
 To run app with `n_points` and `n_threads` use the code below: 
 ```bash
 python utils/generate_n_points.py <n_points>
-nvcc src/task1/n_body_cuda.cu -o src/task1/n_body_cuda
 ./src/task1/n_body_cuda <n_threads>
 ```
 
 If you want to run with checking the results:
 ```bash
 python utils/generate_n_points.py <n_points>
-nvcc src/task1/n_body_cuda.cu -o src/task1/n_body_cuda
 ./src/task1/n_body_cuda <n_threads>
 python utils/check_n_body_correctness.py
 ```
 
 Run benchmarks:
 ```bash
-nvcc src/task1/n_body_cuda.cu -o src/task1/n_body_cuda
 python utils/make_benchmarks.py
 ```
 
