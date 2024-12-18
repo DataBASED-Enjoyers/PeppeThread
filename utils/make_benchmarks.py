@@ -40,9 +40,9 @@ def run_program(num_threads, exec_path="src/task1/n_body_cuda"):
 
 if __name__ == "__main__":
     # Параметры бенчмарка
-    ns = [100, 200] #, 500] #, 1000, 2500]
+    ns = [100, 200, 500, 1000, 2500]
     thread_list = [1, 4, 16, 64, 256, 1024]  # пример набора потоков
-    repetitions = 1
+    repetitions = 5
 
     benchmark_dir = "src/task1/benchmarks"
     if not os.path.exists(benchmark_dir):
