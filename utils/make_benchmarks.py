@@ -10,7 +10,7 @@ def run_program(num_threads, exec_path="src/task1/n_body_cuda"):
     """
     Запускает программу с заданным числом потоков и считывает время CPU и GPU из её вывода.
     Предполагается, что программа выводит строки:
-      "Total computation time (CPU): X.XXXXXXXX s"
+      "Total computation time: X.XXXXXXXX s"
       "Total GPU time accumulated:  Y.YYYYYYYY s"
     Возвращает (cpu_time, gpu_time).
     """
