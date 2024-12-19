@@ -26,7 +26,7 @@ def run_program(num_threads, exec_path="src/task1/n_body_cuda"):
     return cpu_time, gpu_time
 
 if __name__ == "__main__":
-    ns = [100, 200] #, 500, 1000]
+    ns = [100, 200, 500, 1000]
     thread_list = [1, 4, 16, 64, 256, 1024]
     repetitions = 5
 
