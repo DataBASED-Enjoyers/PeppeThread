@@ -1,4 +1,4 @@
-# PeppeMPI
+# PeppeOpenCUDA
 
 ## Выполнили
 
