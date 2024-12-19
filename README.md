@@ -55,7 +55,7 @@ python utils/generate_n_points.py <n_points>
 If you want to run with checking the results:
 ```bash
 python utils/generate_n_points.py <n_points>
-./src/task1/n_body_cuda <n_threads>
+./src/task1/n_body_cuda <n_threads> 1
 python utils/check_n_body_correctness.py
 ```
 

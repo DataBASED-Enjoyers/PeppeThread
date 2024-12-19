@@ -176,7 +176,7 @@ int main(int argc, char* argv[]) {
         t = step * dt;
 
         // Запись промежуточных состояний
-        if (step % output_interval == 0 && makeTrajectories) {
+        if ((step % output_interval == 0) && makeTrajectories) {
             checkCudaErrors(cudaMemcpy(h_bodies.data(), d_bodies, n * sizeof(Body), cudaMemcpyDeviceToHost));
             traj_out << t;
             for (int i = 0; i < n; i++) {
