@@ -23,8 +23,8 @@ def run_program(num_threads, exec_path="src/task1/n_body_cuda"):
     gpu_time = None
     for line in output:
         line = line.strip()
-        if line.startswith("Total computation time (CPU):"):
-            # Формат: "Total computation time (CPU): X.XXXXXXX s"
+        if line.startswith("Total computation time:"):
+            # Формат: "Total computation time: X.XXXXXXX s"
             parts = line.split(":")[1].strip().split()
             # parts[0] должно быть временем
             cpu_time = float(parts[0])
@@ -34,7 +34,7 @@ def run_program(num_threads, exec_path="src/task1/n_body_cuda"):
             gpu_time = float(parts[0])
 
     if cpu_time is None or gpu_time is None:
-        raise RuntimeError("Не удалось прочитать время CPU/GPU из вывода программы")
+        raise RuntimeError("Не удалось прочитать общее время/время GPU из вывода программы")
 
     return cpu_time, gpu_time
 
@@ -81,14 +81,14 @@ if __name__ == "__main__":
     # Подсчёт ускорения S = T_serial / T_parallel по CPU времени
     # T_serial это cpu_avg при tcount=1
     # Формируем Markdown таблицу:
-    # | N | threads | avg_time_CPU, sec | avg_time_CUDA, sec | Ускорение, S |
+    # | N | threads | avg_time, sec | avg_time_CUDA, sec | Ускорение, S |
     md_filename = os.path.join(benchmark_dir, "benchmark_results.md")
     with open(md_filename, "w") as f:
         f.write("# Benchmark Results\n\n")
         f.write("## Summary\n")
         f.write("Ниже приводится таблица результатов с разными N и количеством потоков:\n\n")
 
-        f.write("| N | threads | avg_time_CPU (s) | avg_time_CUDA (s) | Speedup S |\n")
+        f.write("| N | threads | avg_time (s) | avg_time_CUDA (s) | Ускорение, S |\n")
         f.write("|---|----------|-----------------|-------------------|-----------|\n")
         for n in ns:
             T_serial = results[(n, 1)]["cpu_avg"]  # Время при 1 потоке
@@ -99,23 +99,7 @@ if __name__ == "__main__":
                 S = T_serial / cpu_avg
                 f.write(f"| {n} | {tcount} | {cpu_avg:.6f} | {gpu_avg:.6f} | {S:.2f} |\n")
 
-    # 1. График времени от N при разном числе потоков (CPU время)
-    plt.figure(figsize=(8, 6))
-    for tcount in thread_list:
-        avg_times_cpu = [results[(n, tcount)]["cpu_avg"] for n in ns]
-        plt.plot(ns, avg_times_cpu, marker='o', label=f"{tcount} threads")
-    plt.xlabel("Number of bodies (N)")
-    plt.ylabel("Average CPU Time (s)")
-    plt.title("CPU Performance scaling with number of bodies")
-    plt.legend()
-    plt.grid(True)
-    plt.xscale("log")
-    plt.xticks(ns, labels=ns)  # Устанавливаем равномерные значения для меток X
-    time_vs_n_cpu_png = os.path.join(benchmark_dir, "time_vs_n_cpu.png")
-    plt.savefig(time_vs_n_cpu_png, dpi=150)
-    plt.close()
-
-    # 2. График времени от N при разном числе потоков (GPU время)
+    # 1. График времени от N при разном числе потоков (GPU время)
     plt.figure(figsize=(8, 6))
     for tcount in thread_list:
         avg_times_gpu = [results[(n, tcount)]["gpu_avg"] for n in ns]
@@ -131,13 +115,13 @@ if __name__ == "__main__":
     plt.savefig(time_vs_n_gpu_png, dpi=150)
     plt.close()
 
-    # 3. Графики ускорения для каждого N (по CPU времени)
+    # 2. Графики ускорения для каждого N (по GPU времени)
     # Ускорение S = T_serial / T_parallel
     for n in ns:
-        T_serial = results[(n, 1)]["cpu_avg"]
+        T_serial = results[(n, 1)]["gpu_avg"]
         speedups = []
         for tcount in thread_list:
-            T_parallel = results[(n, tcount)]["cpu_avg"]
+            T_parallel = results[(n, tcount)]["gpu_avg"]
             S = T_serial / T_parallel
             speedups.append(S)
 

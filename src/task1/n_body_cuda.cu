@@ -94,6 +94,13 @@ int main(int argc, char* argv[]) {
         blockSize = atoi(argv[1]);
     }
 
+    bool makeTrajectories = false;
+    if (argc > 2) {
+        if (atoi(argv[2]) == 1) {
+            makeTrajectories = true;
+        }
+    }
+
     // Читаем входные данные
     std::ifstream input(input_filename);
     input >> n;
@@ -113,21 +120,25 @@ int main(int argc, char* argv[]) {
     int gridSize = (n + blockSize - 1) / blockSize;
 
     std::ofstream traj_out(trajectory_filename);
-    // Записываем заголовок
-    traj_out << "t";
-    for (int i = 0; i < n; i++) {
-        traj_out << ",x_" << i << ",y_" << i << ",vx_" << i << ",vy_" << i;
+    if (makeTrajectories) {
+        // Записываем заголовок
+        traj_out << "t";
+        for (int i = 0; i < n; i++) {
+            traj_out << ",x_" << i << ",y_" << i << ",vx_" << i << ",vy_" << i;
+        }
+        traj_out << "\n";
     }
-    traj_out << "\n";
 
     double t = 0.0;
 
-    // Записываем начальное состояние
-    traj_out << t;
-    for (int i = 0; i < n; i++) {
-        traj_out << "," << h_bodies[i].x << "," << h_bodies[i].y << "," << h_bodies[i].vx << "," << h_bodies[i].vy;
+    if (makeTrajectories) {
+        // Записываем начальное состояние
+        traj_out << t;
+        for (int i = 0; i < n; i++) {
+            traj_out << "," << h_bodies[i].x << "," << h_bodies[i].y << "," << h_bodies[i].vx << "," << h_bodies[i].vy;
+        }
+        traj_out << "\n";
     }
-    traj_out << "\n";
 
     int output_interval = 100;
 
@@ -165,7 +176,7 @@ int main(int argc, char* argv[]) {
         t = step * dt;
 
         // Запись промежуточных состояний
-        if (step % output_interval == 0) {
+        if (step % output_interval == 0 && makeTrajectories) {
             checkCudaErrors(cudaMemcpy(h_bodies.data(), d_bodies, n * sizeof(Body), cudaMemcpyDeviceToHost));
             traj_out << t;
             for (int i = 0; i < n; i++) {
@@ -199,7 +210,7 @@ int main(int argc, char* argv[]) {
     checkCudaErrors(cudaEventDestroy(stopEvent));
 
     // Выводим результаты
-    std::cout << "Total computation time (CPU): " << diff.count() << " s\n";
+    std::cout << "Total computation time: " << diff.count() << " s\n";
     std::cout << "Total GPU time accumulated: " << (total_gpu_time_ms/1000.0) << " s\n";
     std::cout << "Average GPU time per step: " << (total_gpu_time_ms / steps) << " ms\n";
 
