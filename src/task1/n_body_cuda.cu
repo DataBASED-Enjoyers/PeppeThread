@@ -29,30 +29,38 @@ __global__ void computeForces(Body* bodies, double* Fx, double* Fy, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
 
-    // Загружаем все тела в shared memory
-    for (int j = threadIdx.x; j < n; j += blockDim.x) {
-        sharedBodies[j] = bodies[j];
-    }
-    __syncthreads();
-
-    double forceX = 0.0, forceY = 0.0;
-
     double ix = bodies[i].x;
     double iy = bodies[i].y;
     double imass = bodies[i].mass;
 
-    for (int j = 0; j < n; j++) {
-        if (i != j) {
-            double dx = sharedBodies[j].x - ix;
-            double dy = sharedBodies[j].y - iy;
-            double distSqr = dx * dx + dy * dy + 1e-10;
-            double invDist = rsqrt(distSqr);
-            double invDist3 = invDist * invDist * invDist;
-            double F = G * imass * sharedBodies[j].mass * invDist3;
+    double forceX = 0.0;
+    double forceY = 0.0;
 
-            forceX += F * dx;
-            forceY += F * dy;
+    int tiles = (n + blockDim.x - 1) / blockDim.x;
+
+    for (int tile = 0; tile < tiles; tile++) {
+        int idx = tile * blockDim.x + threadIdx.x;
+        if (idx < n) {
+            sharedBodies[threadIdx.x] = bodies[idx];
         }
+        __syncthreads();
+
+        int count = (tile == tiles - 1) ? (n - tile * blockDim.x) : blockDim.x;
+        for (int j = 0; j < count; j++) {
+            int actual_j = tile * blockDim.x + j;
+            if (actual_j != i) {
+                double dx = sharedBodies[j].x - ix;
+                double dy = sharedBodies[j].y - iy;
+                double distSqr = dx * dx + dy * dy + 1e-10;
+                double invDist = rsqrt(distSqr);
+                double invDist3 = invDist * invDist * invDist;
+                double F = G * imass * sharedBodies[j].mass * invDist3;
+
+                forceX += F * dx;
+                forceY += F * dy;
+            }
+        }
+        __syncthreads();
     }
 
     Fx[i] = forceX;
@@ -133,7 +141,8 @@ int main(int argc, char* argv[]) {
     // Начинаем замер CPU-времени
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    size_t sharedMemSize = n * sizeof(Body);
+    // Используем только blockSize для shared memory
+    size_t sharedMemSize = blockSize * sizeof(Body);
 
     // Основной цикл
     for (int step = 1; step <= steps; step++) {
