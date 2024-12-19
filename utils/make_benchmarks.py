@@ -7,29 +7,16 @@ from generate_n_points import generate_bodies
 from tqdm import tqdm
 
 def run_program(num_threads, exec_path="src/task1/n_body_cuda"):
-    """
-    Запускает программу с заданным числом потоков и считывает время CPU и GPU из её вывода.
-    Предполагается, что программа выводит строки:
-      "Total computation time: X.XXXXXXXX s"
-      "Total GPU time accumulated:  Y.YYYYYYYY s"
-    Возвращает (cpu_time, gpu_time).
-    """
-    # Запускаем программу и перехватываем вывод
     result = subprocess.run([exec_path, str(num_threads)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True)
     output = result.stdout.strip().split('\n')
-
-    # Ищем строки с временем
     cpu_time = None
     gpu_time = None
     for line in output:
         line = line.strip()
         if line.startswith("Total computation time:"):
-            # Формат: "Total computation time: X.XXXXXXX s"
             parts = line.split(":")[1].strip().split()
-            # parts[0] должно быть временем
             cpu_time = float(parts[0])
         elif line.startswith("Total GPU time accumulated:"):
-            # Формат: "Total GPU time accumulated: Y.YYYYYYYY s"
             parts = line.split(":")[1].strip().split()
             gpu_time = float(parts[0])
 
@@ -39,9 +26,8 @@ def run_program(num_threads, exec_path="src/task1/n_body_cuda"):
     return cpu_time, gpu_time
 
 if __name__ == "__main__":
-    # Параметры бенчмарка
     ns = [100, 200, 500, 1000, 2500]
-    thread_list = [1, 4, 16, 64, 256, 1024]  # пример набора потоков
+    thread_list = [1, 4, 16, 64, 256, 1024]
     repetitions = 5
 
     benchmark_dir = "src/task1/benchmarks"
@@ -50,38 +36,23 @@ if __name__ == "__main__":
 
     task1_dir = os.getcwd() + "/src/task1"
     input_path = f'{task1_dir}/input.txt'
-
-    # Результаты будем хранить в формате:
-    # results[(n, num_threads)] = {
-    #   "cpu_times": [..repetitions..],
-    #   "gpu_times": [..repetitions..]
-    # }
     results = {}
 
-    # Запускаем тесты
     for n in ns:
-        # Генерируем входные данные для данной задачи
         generate_bodies(n, input_path)
         for tcount in thread_list:
             cpu_times = []
             gpu_times = []
-            # Прогресс-бар для repetitions
             for _ in tqdm(range(repetitions), desc=f"N={n}, threads={tcount}", leave=True):
                 c_t, g_t = run_program(tcount)
                 cpu_times.append(c_t)
                 gpu_times.append(g_t)
-            # Сохраняем результат
             results[(n, tcount)] = {
                 "cpu_avg": np.mean(cpu_times),
                 "cpu_std": np.std(cpu_times),
                 "gpu_avg": np.mean(gpu_times),
                 "gpu_std": np.std(gpu_times)
             }
-
-    # Подсчёт ускорения S = T_serial / T_parallel по CPU времени
-    # T_serial это cpu_avg при tcount=1
-    # Формируем Markdown таблицу:
-    # | N | threads | avg_time, sec | avg_time_CUDA, sec | Ускорение, S |
     md_filename = os.path.join(benchmark_dir, "benchmark_results.md")
     with open(md_filename, "w") as f:
         f.write("# Benchmark Results\n\n")
@@ -95,11 +66,9 @@ if __name__ == "__main__":
             for tcount in thread_list:
                 cpu_avg = results[(n, tcount)]["cpu_avg"]
                 gpu_avg = results[(n, tcount)]["gpu_avg"]
-                # Ускорение
                 S = T_serial / cpu_avg
                 f.write(f"| {n} | {tcount} | {cpu_avg:.6f} | {gpu_avg:.6f} | {S:.2f} |\n")
 
-    # 1. График времени от N при разном числе потоков (GPU время)
     plt.figure(figsize=(8, 6))
     for tcount in thread_list:
         avg_times_gpu = [results[(n, tcount)]["gpu_avg"] for n in ns]
@@ -110,13 +79,11 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(True)
     plt.xscale("log")
-    plt.xticks(ns, labels=ns)  # Устанавливаем равномерные значения для меток X
+    plt.xticks(ns, labels=ns)
     time_vs_n_gpu_png = os.path.join(benchmark_dir, "time_vs_n_gpu.png")
     plt.savefig(time_vs_n_gpu_png, dpi=150)
     plt.close()
 
-    # 2. Графики ускорения для каждого N (по GPU времени)
-    # Ускорение S = T_serial / T_parallel
     for n in ns:
         T_serial = results[(n, 1)]["gpu_avg"]
         speedups = []
@@ -132,7 +99,7 @@ if __name__ == "__main__":
         plt.title(f"Speedup for N={n}")
         plt.grid(True)
         plt.xscale("log")
-        plt.xticks(thread_list, labels=thread_list)  # Равномерные метки для числа потоков
+        plt.xticks(thread_list, labels=thread_list)
         fig_name = os.path.join(benchmark_dir, f"speedup_n_{n}.png")
         plt.savefig(fig_name, dpi=150)
         plt.close()
