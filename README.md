@@ -42,7 +42,7 @@ cd ..
 
 ## Task 1
 
-[Task 1 Report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/lab2/src/task1/report_task_1.md)
+[Task 1 Report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/cuda/src/task1/report_task_1.md)
 
 ### Example
 
@@ -70,7 +70,7 @@ All files will be generated in directory `src/task1/benchmarks`.
 
 ## Task 2
 
-[Task 2 Report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/lab2/src/task2/report_task_2.md)
+[Task 2 Report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/cuda/src/task2/report_task_2.md)
 
 ---
 
