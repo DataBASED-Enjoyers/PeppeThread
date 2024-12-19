@@ -57,6 +57,10 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp",
-        "math.h": "c"
+        "math.h": "c",
+        "cstring": "cpp",
+        "map": "cpp",
+        "fstream": "cpp",
+        "cinttypes": "cpp"
     }
 }

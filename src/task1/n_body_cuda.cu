@@ -6,7 +6,16 @@
 #include <chrono>
 #include <cuda_runtime.h>
 
-#define G 6.67430e-11 // Гравитационная постоянная
+#define G 6.67430e-11 // гравитационная постоянная
+
+#define checkCudaErrors(val) CheckCuda((val), #val, __FILE__, __LINE__)
+inline void CheckCuda(cudaError_t result, char const *const func, const char *const file, int const line) {
+    if (result != cudaSuccess) {
+        std::cerr << "CUDA error at " << file << ":" << line << " code=" << (int)result << " \"" << func << "\" " 
+                  << cudaGetErrorString(result) << std::endl;
+        exit(1);
+    }
+}
 
 struct Body {
     double x, y;      // Координаты
@@ -15,19 +24,31 @@ struct Body {
 };
 
 __global__ void computeForces(Body* bodies, double* Fx, double* Fy, int n) {
+    extern __shared__ Body sharedBodies[];
+
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
 
+    // Загружаем все тела в shared memory
+    for (int j = threadIdx.x; j < n; j += blockDim.x) {
+        sharedBodies[j] = bodies[j];
+    }
+    __syncthreads();
+
     double forceX = 0.0, forceY = 0.0;
+
+    double ix = bodies[i].x;
+    double iy = bodies[i].y;
+    double imass = bodies[i].mass;
 
     for (int j = 0; j < n; j++) {
         if (i != j) {
-            double dx = bodies[j].x - bodies[i].x;
-            double dy = bodies[j].y - bodies[i].y;
-            double distSqr = dx * dx + dy * dy + 1e-10; // Исключаем деление на ноль
+            double dx = sharedBodies[j].x - ix;
+            double dy = sharedBodies[j].y - iy;
+            double distSqr = dx * dx + dy * dy + 1e-10;
             double invDist = rsqrt(distSqr);
             double invDist3 = invDist * invDist * invDist;
-            double F = G * bodies[i].mass * bodies[j].mass * invDist3;
+            double F = G * imass * sharedBodies[j].mass * invDist3;
 
             forceX += F * dx;
             forceY += F * dy;
@@ -38,12 +59,14 @@ __global__ void computeForces(Body* bodies, double* Fx, double* Fy, int n) {
     Fy[i] = forceY;
 }
 
+
 __global__ void updateBodies(Body* bodies, double* Fx, double* Fy, int n, double dt) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
 
-    bodies[i].vx += (Fx[i] / bodies[i].mass) * dt;
-    bodies[i].vy += (Fy[i] / bodies[i].mass) * dt;
+    double imass = bodies[i].mass;
+    bodies[i].vx += (Fx[i] / imass) * dt;
+    bodies[i].vy += (Fy[i] / imass) * dt;
 
     bodies[i].x += bodies[i].vx * dt;
     bodies[i].y += bodies[i].vy * dt;
@@ -63,7 +86,7 @@ int main(int argc, char* argv[]) {
         blockSize = atoi(argv[1]);
     }
 
-    // Читаем входные данные (вне замера времени)
+    // Читаем входные данные
     std::ifstream input(input_filename);
     input >> n;
     std::vector<Body> h_bodies(n);
@@ -74,10 +97,10 @@ int main(int argc, char* argv[]) {
 
     Body* d_bodies;
     double *d_Fx, *d_Fy;
-    cudaMalloc(&d_bodies, n * sizeof(Body));
-    cudaMalloc(&d_Fx, n * sizeof(double));
-    cudaMalloc(&d_Fy, n * sizeof(double));
-    cudaMemcpy(d_bodies, h_bodies.data(), n * sizeof(Body), cudaMemcpyHostToDevice);
+    checkCudaErrors(cudaMalloc(&d_bodies, n * sizeof(Body)));
+    checkCudaErrors(cudaMalloc(&d_Fx, n * sizeof(double)));
+    checkCudaErrors(cudaMalloc(&d_Fy, n * sizeof(double)));
+    checkCudaErrors(cudaMemcpy(d_bodies, h_bodies.data(), n * sizeof(Body), cudaMemcpyHostToDevice));
 
     int gridSize = (n + blockSize - 1) / blockSize;
 
@@ -89,8 +112,9 @@ int main(int argc, char* argv[]) {
     }
     traj_out << "\n";
 
-    // Записываем начальное состояние при t=0 ДО замеров
     double t = 0.0;
+
+    // Записываем начальное состояние
     traj_out << t;
     for (int i = 0; i < n; i++) {
         traj_out << "," << h_bodies[i].x << "," << h_bodies[i].y << "," << h_bodies[i].vx << "," << h_bodies[i].vy;
@@ -101,35 +125,39 @@ int main(int argc, char* argv[]) {
 
     // Создаем CUDA events для замеров GPU-времени
     cudaEvent_t startEvent, stopEvent;
-    cudaEventCreate(&startEvent);
-    cudaEventCreate(&stopEvent);
+    checkCudaErrors(cudaEventCreate(&startEvent));
+    checkCudaErrors(cudaEventCreate(&stopEvent));
 
     float total_gpu_time_ms = 0.0f;
 
-    // Начинаем замер CPU-времени для основного цикла
+    // Начинаем замер CPU-времени
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Основной цикл времени
+    size_t sharedMemSize = n * sizeof(Body);
+
+    // Основной цикл
     for (int step = 1; step <= steps; step++) {
         // Запуск GPU замера
-        cudaEventRecord(startEvent, 0);
+        checkCudaErrors(cudaEventRecord(startEvent, 0));
 
-        computeForces<<<gridSize, blockSize>>>(d_bodies, d_Fx, d_Fy, n);
+        computeForces<<<gridSize, blockSize, sharedMemSize>>>(d_bodies, d_Fx, d_Fy, n);
         updateBodies<<<gridSize, blockSize>>>(d_bodies, d_Fx, d_Fy, n, dt);
-        cudaDeviceSynchronize();
+
+        checkCudaErrors(cudaPeekAtLastError());
+        checkCudaErrors(cudaDeviceSynchronize());
 
         // Остановка GPU замера
-        cudaEventRecord(stopEvent, 0);
-        cudaEventSynchronize(stopEvent);
+        checkCudaErrors(cudaEventRecord(stopEvent, 0));
+        checkCudaErrors(cudaEventSynchronize(stopEvent));
         float gpu_time_ms = 0.0f;
-        cudaEventElapsedTime(&gpu_time_ms, startEvent, stopEvent);
+        checkCudaErrors(cudaEventElapsedTime(&gpu_time_ms, startEvent, stopEvent));
         total_gpu_time_ms += gpu_time_ms;
 
         t = step * dt;
 
-        // Периодически копируем данные на хост и записываем их в траекторию
+        // Запись промежуточных состояний
         if (step % output_interval == 0) {
-            cudaMemcpy(h_bodies.data(), d_bodies, n * sizeof(Body), cudaMemcpyDeviceToHost);
+            checkCudaErrors(cudaMemcpy(h_bodies.data(), d_bodies, n * sizeof(Body), cudaMemcpyDeviceToHost));
             traj_out << t;
             for (int i = 0; i < n; i++) {
                 traj_out << "," << h_bodies[i].x << "," << h_bodies[i].y << "," << h_bodies[i].vx << "," << h_bodies[i].vy;
@@ -143,8 +171,8 @@ int main(int argc, char* argv[]) {
 
     traj_out.close();
 
-    // Копируем конечные результаты и записываем в отдельный файл
-    cudaMemcpy(h_bodies.data(), d_bodies, n * sizeof(Body), cudaMemcpyDeviceToHost);
+    // Копируем конечные результаты
+    checkCudaErrors(cudaMemcpy(h_bodies.data(), d_bodies, n * sizeof(Body), cudaMemcpyDeviceToHost));
 
     std::ofstream output(output_filename);
     for (int i = 0; i < n; i++) {
@@ -153,13 +181,13 @@ int main(int argc, char* argv[]) {
     output.close();
 
     // Освобождение памяти
-    cudaFree(d_bodies);
-    cudaFree(d_Fx);
-    cudaFree(d_Fy);
+    checkCudaErrors(cudaFree(d_bodies));
+    checkCudaErrors(cudaFree(d_Fx));
+    checkCudaErrors(cudaFree(d_Fy));
 
     // Уничтожаем events
-    cudaEventDestroy(startEvent);
-    cudaEventDestroy(stopEvent);
+    checkCudaErrors(cudaEventDestroy(startEvent));
+    checkCudaErrors(cudaEventDestroy(stopEvent));
 
     // Выводим результаты
     std::cout << "Total computation time (CPU): " << diff.count() << " s\n";

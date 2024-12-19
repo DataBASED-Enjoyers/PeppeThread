@@ -35,3 +35,9 @@
 build
 __pycache__
 .venv
+.vscode
+
+src/task1/n_body_cuda
+src/task1/input.txt
+src/task1/output.csv
+src/task1/trajectory.csv
