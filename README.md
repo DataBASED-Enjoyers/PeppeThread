@@ -72,6 +72,32 @@ All files will be generated in directory `src/task1/benchmarks`.
 
 [Task 2 Report](https://github.com/DataBASED-Enjoyers/PeppeThread/blob/cuda/src/task2/report_task_2.md)
 
+### Local build
+
+```bash
+gcc  ./src/task2/openMP_task.c -o ./src/task2/openMP_task.o -Wall -O3 -fopenmp -lm
+```
+
+### Local start
+
+```bash
+./src/task2/openMP_task.o <num_points> <num_processes>
+```
+
+Data will be saved at ```src/task2/benchmarks/output.csv```
+
+### Plot output
+
+```bash
+python utils/plot_task2_output.py
+```
+
+### Start benchmark test
+
+```bash
+python utils/openmp_benchmarks.py
+```
+
 ---
 
 ## Utilities
