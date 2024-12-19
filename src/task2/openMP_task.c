@@ -3,12 +3,10 @@
 #include <math.h>
 #include <omp.h>
 
-// Функция f(x, y) (внешние источники тепла)
 double f(double x, double y) {
     return sin(M_PI * x) * sin(M_PI * y);
 }
 
-// Инициализация граничных условий
 void initialize_boundary_conditions(double** u, int N, double c) {
     for (int i = 0; i <= N; i++) {
         u[i][0] = c;         // Нижняя граница
@@ -120,7 +118,7 @@ int main(int argc, char* argv[]) {
     printf("Elapsed time: %.6f seconds\n", elapsed_time);
 
     // Сохраняем результаты в CSV
-    save_to_csv(u, N, "output.csv");
+    save_to_csv(u, N, "src/task2/benchmarks/output.csv");
 
     // Освобождение памяти
     for (int i = 0; i <= N; i++) {
